@@ -17,7 +17,7 @@ const ManageBudgetScreen = ({ navigation }) => {
     useContext(BudgetContext);
 
   const [open, setOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("Food");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [items, setItems] = useState(
     Object.keys(categoryBudgets).map((key) => ({
       label: key,
@@ -25,9 +25,7 @@ const ManageBudgetScreen = ({ navigation }) => {
     }))
   );
 
-  const [newAmount, setNewAmount] = useState(
-    categoryBudgets[selectedCategory]?.toString() || ""
-  );
+  const [newAmount, setNewAmount] = useState("");
   const [newThreshold, setNewThreshold] = useState(threshold.toString());
 
   const handleSave = () => {
@@ -49,7 +47,12 @@ const ManageBudgetScreen = ({ navigation }) => {
           setValue={(callback) => {
             const value = callback(selectedCategory);
             setSelectedCategory(value);
-            setNewAmount(categoryBudgets[value]?.toString() || "");
+
+            setNewAmount((prevAmount) => {
+              return prevAmount === ""
+                ? categoryBudgets[value]?.toString() || ""
+                : prevAmount;
+            });
           }}
           setItems={setItems}
           style={styles.dropdown}

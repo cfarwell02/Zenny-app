@@ -20,6 +20,7 @@ import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
+import { BudgetContext } from "../context/BudgetContext";
 
 const AddReceiptScreen = () => {
   const [image, setImage] = useState(null);
@@ -36,6 +37,7 @@ const AddReceiptScreen = () => {
 
   const { addReceipt } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
+  const { addExpense } = useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
   const handleSaveReceipt = () => {
@@ -55,6 +57,13 @@ const AddReceiptScreen = () => {
       date: new Date().toISOString(),
     };
 
+    const expense = {
+      amount: Number(amount),
+      category: selectedCategory,
+      date: new Date().toISOString(),
+    };
+
+    addExpense(expense);
     addReceipt(newReceipt);
     setImage(null);
     setAmount("");

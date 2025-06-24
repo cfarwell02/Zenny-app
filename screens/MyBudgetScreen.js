@@ -12,7 +12,6 @@ import { BudgetContext } from "../context/BudgetContext";
 const MyBudgetScreen = ({ navigation }) => {
   const { categoryBudgets, expenses } = useContext(BudgetContext);
 
-  // Total spent per category
   const categorySpent = {};
   expenses.forEach((e) => {
     categorySpent[e.category] = (categorySpent[e.category] || 0) + e.amount;

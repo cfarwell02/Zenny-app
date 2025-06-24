@@ -12,8 +12,12 @@ export const BudgetProvider = ({ children }) => {
     Other: 0,
   }); // default budget
 
-  const [threshold, setThreshold] = useState(75); // default alert threshold %
-  const [expenses, setExpenses] = useState([]); // example expense array
+  const [threshold, setThreshold] = useState(75);
+  const [expenses, setExpenses] = useState([]);
+
+  const addExpense = (expense) => {
+    setExpenses((prev) => [...prev, expense]);
+  };
 
   const updateCategoryBudget = (category, amount) => {
     setCategoryBudgets((prev) => ({
@@ -34,6 +38,7 @@ export const BudgetProvider = ({ children }) => {
         categoryBudgets,
         setCategoryBudgets,
         updateCategoryBudget,
+        addExpense,
       }}
     >
       {children}
