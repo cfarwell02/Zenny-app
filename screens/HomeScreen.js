@@ -4,68 +4,92 @@ import { ThemeContext } from "../context/ThemeContext";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 import { lightTheme, darkTheme } from "../constants/themes";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const HomeScreen = ({ navigation }) => {
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.title, { color: theme.text }]}>
-        Welcome to Zenny!
-      </Text>
-
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.primary }]}
-        onPress={() => navigation.navigate("Add Receipt")}
-      >
-        <Text style={[styles.buttonText, { color: theme.buttonText }]}>
-          ➕ Add Receipt
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: theme.text }]}>
+          Welcome to Zenny!
         </Text>
-      </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.primary }]}
-        onPress={() => navigation.navigate("Statistics")}
-      >
-        <Text style={[styles.buttonText, { color: theme.buttonText }]}>
-          📊 View Stats
-        </Text>
-      </TouchableOpacity>
+      {/* Centered Button Group */}
+      <View style={styles.buttonGroup}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate("Saved Receipts")}
+        >
+          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+            🧾 View Receipts
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.primary }]}
-        onPress={() => navigation.navigate("Settings")}
-      >
-        <Text style={[styles.buttonText, { color: theme.buttonText }]}>
-          ⚙️ Settings
-        </Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate("Add Receipt")}
+        >
+          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+            ➕ Add Receipt
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate("Statistics")}
+        >
+          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+            📊 View Stats
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate("Settings")}
+        >
+          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+            ⚙️ Settings
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    padding: spacing.screen,
+    paddingHorizontal: 24,
+  },
+  header: {
+    alignItems: "center",
+    paddingTop: 100, // replaces marginTop, and avoids extra spacing
+    marginBottom: 0, // controls space between title and buttonGroup
   },
   title: {
     fontSize: 28,
     fontWeight: "600",
-    marginBottom: spacing.large,
-    textAlign: "center",
+  },
+  buttonGroup: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   button: {
-    paddingVertical: spacing.inputPadding,
-    paddingHorizontal: spacing.screen,
-    borderRadius: radius.medium,
-    marginBottom: spacing.betweenElements,
+    width: 200,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+    alignItems: "center",
   },
   buttonText: {
     fontSize: 18,
-    textAlign: "center",
     fontWeight: "500",
   },
 });
