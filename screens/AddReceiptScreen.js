@@ -1,4 +1,3 @@
-// 1. Imports
 import React, { useState, useContext } from "react";
 import {
   View,
@@ -17,10 +16,12 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import DropDownPicker from "react-native-dropdown-picker";
 import { ReceiptContext } from "../context/ReceiptContext";
+import { ThemeContext } from "../context/ThemeContext";
+import { lightTheme, darkTheme } from "../constants/themes";
+import { spacing } from "../constants/spacing";
+import { radius } from "../constants/radius";
 
-// 2. Component
 const AddReceiptScreen = () => {
-  // 2.1 State
   const [image, setImage] = useState(null);
   const [amount, setAmount] = useState("");
   const [open, setOpen] = useState(false);
@@ -33,57 +34,9 @@ const AddReceiptScreen = () => {
     { label: "Other", value: "Other" },
   ]);
 
-  // 2.2 Context
   const { addReceipt } = useContext(ReceiptContext);
-
-  // 3. Helper functions
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Denied", "We need access to your photos.");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
-  };
-
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Denied", "We need access to your camera.");
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({ quality: 1 });
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
-  };
-
-  // 4. Main handlers
-  const handleInsertPhoto = async () => {
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ["Cancel", "Take Photo", "Choose from Library"],
-          cancelButtonIndex: 0,
-        },
-        async (buttonIndex) => {
-          if (buttonIndex === 1) await takePhoto();
-          if (buttonIndex === 2) await pickImage();
-        }
-      );
-    } else {
-      Alert.alert("Insert Photo", "Choose an option", [
-        { text: "Take Photo", onPress: takePhoto },
-        { text: "Choose from Library", onPress: pickImage },
-        { text: "Cancel", style: "cancel" },
-      ]);
-    }
-  };
+  const { darkMode } = useContext(ThemeContext);
+  const theme = darkMode ? darkTheme : lightTheme;
 
   const handleSaveReceipt = () => {
     if (!image || !amount || !selectedCategory) {
@@ -109,35 +62,97 @@ const AddReceiptScreen = () => {
     Alert.alert("Success", "Receipt saved successfully!");
   };
 
-  // 5. Return JSX
+  const handleInsertPhoto = async () => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ["Cancel", "Take Photo", "Choose from Library"],
+          cancelButtonIndex: 0,
+        },
+        async (buttonIndex) => {
+          if (buttonIndex === 1) await takePhoto();
+          if (buttonIndex === 2) await pickImage();
+        }
+      );
+    } else {
+      Alert.alert("Insert Photo", "Choose an option", [
+        { text: "Take Photo", onPress: takePhoto },
+        { text: "Choose from Library", onPress: pickImage },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Denied", "We need access to your camera.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 1 });
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Denied", "We need access to your photos.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[
+          styles.container,
+          { backgroundColor: theme.background, flex: 1 },
+        ]} // Add flex: 1 here
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={100}
       >
         <View style={styles.inner}>
           <View>
-            <Text style={styles.title}>Add a Receipt</Text>
+            <Text style={[styles.title, { color: theme.text }]}>
+              Add a Receipt
+            </Text>
 
-            <TouchableOpacity style={styles.button} onPress={handleInsertPhoto}>
-              <Text style={styles.buttonText}>📷 Insert Photo</Text>
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: theme.primary }]}
+              onPress={handleInsertPhoto}
+            >
+              <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+                📷 Insert Photo
+              </Text>
             </TouchableOpacity>
 
             {image && (
-              <View style={styles.card}>
+              <View style={[styles.card, { backgroundColor: theme.card }]}>
                 <Image source={{ uri: image }} style={styles.image} />
 
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: theme.input,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
                   placeholder="Enter amount"
+                  placeholderTextColor={theme.placeholder}
                   keyboardType="numeric"
                   value={amount}
                   onChangeText={setAmount}
                 />
 
-                <View style={{ zIndex: 1000, marginBottom: 16 }}>
+                <View style={styles.dropDownWrapper}>
                   <DropDownPicker
                     open={open}
                     value={selectedCategory}
@@ -146,15 +161,16 @@ const AddReceiptScreen = () => {
                     setValue={setSelectedCategory}
                     setItems={setCategoryItems}
                     placeholder="Select a category..."
-                    dropDownDirection="AUTO"
+                    style={{
+                      borderColor: theme.border,
+                      backgroundColor: theme.input,
+                    }}
                     dropDownContainerStyle={{
-                      borderColor: "#ccc",
+                      borderColor: theme.border,
+                      backgroundColor: theme.input,
                       zIndex: 1000,
                       position: "absolute",
                       top: Platform.OS === "android" ? 50 : 40,
-                    }}
-                    style={{
-                      borderColor: "#ccc",
                     }}
                   />
                 </View>
@@ -164,10 +180,14 @@ const AddReceiptScreen = () => {
 
           {image && (
             <TouchableOpacity
-              style={styles.saveButton}
+              style={[styles.saveButton, { backgroundColor: theme.success }]}
               onPress={handleSaveReceipt}
             >
-              <Text style={styles.saveButtonText}>💾 Save Receipt</Text>
+              <Text
+                style={[styles.saveButtonText, { color: theme.buttonText }]}
+              >
+                💾 Save Receipt
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -176,67 +196,67 @@ const AddReceiptScreen = () => {
   );
 };
 
-// 6. Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    backgroundColor: "#fff",
+    padding: spacing.screen,
   },
   inner: {
     flex: 1,
     justifyContent: "space-between",
+    padding: spacing.betweenElements,
   },
   title: {
     fontSize: 24,
-    marginBottom: 24,
+    marginBottom: spacing.betweenElements,
     textAlign: "center",
   },
   button: {
-    backgroundColor: "#4D90FE",
     paddingVertical: 14,
-    borderRadius: 12,
-    marginBottom: 20,
+    borderRadius: radius.medium,
+    marginBottom: spacing.betweenElements,
   },
   buttonText: {
-    color: "#fff",
     fontSize: 18,
     textAlign: "center",
     fontWeight: "500",
   },
   card: {
-    backgroundColor: "#f0f0f0",
-    padding: 16,
-    borderRadius: 16,
+    padding: spacing.cardPadding,
+    borderRadius: radius.large,
     elevation: 2,
   },
   image: {
     width: "100%",
     height: 200,
-    borderRadius: 8,
-    marginBottom: 16,
+    borderRadius: radius.medium,
+    marginBottom: spacing.betweenElements,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
+    padding: spacing.inputPadding,
+    borderRadius: radius.medium,
     fontSize: 16,
+    marginBottom: spacing.betweenElements,
   },
   saveButton: {
-    backgroundColor: "#34C759",
     paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 16,
+    borderRadius: radius.medium,
+    marginTop: spacing.betweenElements,
+    marginBottom: 70, // 👈 push the button higher
   },
   saveButtonText: {
-    color: "#fff",
     fontSize: 18,
     textAlign: "center",
     fontWeight: "500",
   },
+  DropDownPicker: {
+    position: "absolute",
+  },
+  dropDownWrapper: {
+    zIndex: 10,
+    marginBottom: spacing.betweenElements,
+  },
 });
 
-// 7. Export
 export default AddReceiptScreen;
