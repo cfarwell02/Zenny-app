@@ -9,14 +9,25 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActionSheetIOS,
+  Keyboard,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { Picker } from "@react-native-picker/picker"; // You may need to install this
+import DropDownPicker from "react-native-dropdown-picker";
 
 const AddReceiptScreen = () => {
   const [image, setImage] = useState(null);
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
+  const [open, setOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categoryItems, setCategoryItems] = useState([
+    { label: "Food", value: "Food" },
+    { label: "Shopping", value: "Shopping" },
+    { label: "Transport", value: "Transport" },
+    { label: "Bills", value: "Bills" },
+    { label: "Other", value: "Other" },
+  ]);
 
   const handleInsertPhoto = async () => {
     if (Platform.OS === "ios") {
@@ -68,42 +79,45 @@ const AddReceiptScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Add a Receipt</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <View style={styles.container}>
+          <Text style={styles.title}>Add a Receipt</Text>
 
-      <TouchableOpacity style={styles.button} onPress={handleInsertPhoto}>
-        <Text style={styles.buttonText}>📷 Insert Photo</Text>
-      </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={handleInsertPhoto}>
+            <Text style={styles.buttonText}>📷 Insert Photo</Text>
+          </TouchableOpacity>
 
-      {image && (
-        <View style={styles.card}>
-          <Image source={{ uri: image }} style={styles.image} />
+          {image && (
+            <View style={styles.card}>
+              <Image source={{ uri: image }} style={styles.image} />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Enter amount"
-            keyboardType="numeric"
-            value={amount}
-            onChangeText={setAmount}
-          />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter amount"
+                keyboardType="numeric"
+                value={amount}
+                onChangeText={setAmount}
+              />
 
-          <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={category}
-              onValueChange={(itemValue) => setCategory(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select category..." value="" />
-              <Picker.Item label="Food" value="Food" />
-              <Picker.Item label="Shopping" value="Shopping" />
-              <Picker.Item label="Transport" value="Transport" />
-              <Picker.Item label="Bills" value="Bills" />
-              <Picker.Item label="Other" value="Other" />
-            </Picker>
-          </View>
+              <DropDownPicker
+                open={open}
+                value={selectedCategory}
+                items={categoryItems}
+                setOpen={setOpen}
+                setValue={setSelectedCategory}
+                setItems={setCategoryItems}
+                placeholder="Select a category..."
+                style={{ marginBottom: open ? 180 : 16 }}
+              />
+            </View>
+          )}
         </View>
-      )}
-    </View>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -150,15 +164,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 16,
   },
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-  },
-  picker: {
-    height: 50,
-    width: "100%",
-  },
 });
 
-export default AddRecieptScreen;
+export default AddReceiptScreen;
