@@ -2,23 +2,24 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  Button,
+  TextInput,
   Image,
-  StyleSheet,
   Alert,
-  ActionSheetIOS, // iOS-specific popup menu
   Platform,
   TouchableOpacity,
+  StyleSheet,
+  ActionSheetIOS,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { Picker } from "@react-native-picker/picker"; // You may need to install this
 
-const AddRecieptScreen = () => {
-  const [image, setImage] = React.useState(null);
+const AddReceiptScreen = () => {
+  const [image, setImage] = useState(null);
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState("");
 
-  // Function to handle inserting a photo
   const handleInsertPhoto = async () => {
     if (Platform.OS === "ios") {
-      // Show iOS action sheet
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options: ["Cancel", "Take Photo", "Choose from Library"],
@@ -30,7 +31,6 @@ const AddRecieptScreen = () => {
         }
       );
     } else {
-      // Show Android alert menu
       Alert.alert("Insert Photo", "Choose an option", [
         { text: "Take Photo", onPress: takePhoto },
         { text: "Choose from Library", onPress: pickImage },
@@ -39,7 +39,6 @@ const AddRecieptScreen = () => {
     }
   };
 
-  //Take a photo using the camera
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
@@ -47,26 +46,21 @@ const AddRecieptScreen = () => {
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 1,
-    });
+    const result = await ImagePicker.launchCameraAsync({ quality: 1 });
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
     }
   };
 
-  //Pick an image from the library
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Denied", "We need access to your camera roll.");
+      Alert.alert("Permission Denied", "We need access to your photos.");
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 1,
-    });
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
@@ -81,7 +75,34 @@ const AddRecieptScreen = () => {
         <Text style={styles.buttonText}>📷 Insert Photo</Text>
       </TouchableOpacity>
 
-      {image && <Image source={{ uri: image }} style={styles.image} />}
+      {image && (
+        <View style={styles.card}>
+          <Image source={{ uri: image }} style={styles.image} />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Enter amount"
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={setAmount}
+          />
+
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={category}
+              onValueChange={(itemValue) => setCategory(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select category..." value="" />
+              <Picker.Item label="Food" value="Food" />
+              <Picker.Item label="Shopping" value="Shopping" />
+              <Picker.Item label="Transport" value="Transport" />
+              <Picker.Item label="Bills" value="Bills" />
+              <Picker.Item label="Other" value="Other" />
+            </Picker>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -90,7 +111,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    justifyContent: "center",
     backgroundColor: "#fff",
   },
   title: {
@@ -101,9 +121,8 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: "#4D90FE",
     paddingVertical: 14,
-    paddingHorizontal: 20,
     borderRadius: 12,
-    alignSelf: "center",
+    marginBottom: 20,
   },
   buttonText: {
     color: "#fff",
@@ -111,11 +130,34 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "500",
   },
+  card: {
+    backgroundColor: "#f0f0f0",
+    padding: 16,
+    borderRadius: 16,
+    elevation: 2,
+  },
   image: {
     width: "100%",
-    height: 300,
-    marginTop: 20,
+    height: 200,
     borderRadius: 8,
+    marginBottom: 16,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+  },
+  picker: {
+    height: 50,
+    width: "100%",
   },
 });
 
