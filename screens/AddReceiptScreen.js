@@ -210,6 +210,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: spacing.betweenElements,
     textAlign: "center",
+    marginTop: 50, // Adjusted for better spacing
   },
   button: {
     paddingVertical: 14,
