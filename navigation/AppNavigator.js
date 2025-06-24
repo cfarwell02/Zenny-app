@@ -7,6 +7,7 @@ import AddReceiptScreen from "../screens/AddReceiptScreen";
 import StatsScreen from "../screens/StatsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import SavedReceiptsScreen from "../screens/SavedReceipts";
+import MyBudgetScreen from "../screens/MyBudgetScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -16,6 +17,7 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Saved Receipts" component={SavedReceiptsScreen} />
+        <Stack.Screen name="My Budget" component={MyBudgetScreen} />
         <Stack.Screen name="Add Receipt" component={AddReceiptScreen} />
         <Stack.Screen name="Statistics" component={StatsScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />

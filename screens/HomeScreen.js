@@ -42,6 +42,15 @@ const HomeScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={[styles.button, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate("My Budget")}
+        >
+          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+            💰 My Budget
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.primary }]}
           onPress={() => navigation.navigate("Statistics")}
         >
           <Text style={[styles.buttonText, { color: theme.buttonText }]}>

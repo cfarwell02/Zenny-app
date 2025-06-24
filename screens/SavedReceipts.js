@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
 import { View, Text, Image, StyleSheet, FlatList } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ReceiptContext } from "../context/ReceiptContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
@@ -20,7 +21,10 @@ const SavedReceiptsScreen = () => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      edges={["top", "left", "right"]}
+    >
       {receipts.length === 0 ? (
         <Text style={{ color: theme.text, textAlign: "center" }}>
           No receipts saved yet.
@@ -34,7 +38,7 @@ const SavedReceiptsScreen = () => {
           contentContainerStyle={styles.grid}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -42,7 +46,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    paddingTop: 80,
   },
   grid: {
     gap: 16,
@@ -51,13 +54,13 @@ const styles = StyleSheet.create({
     flex: 1,
     margin: 8,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: radius.medium,
     alignItems: "center",
   },
   image: {
     width: "100%",
-    height: 100,
-    borderRadius: 8,
+    height: 125,
+    borderRadius: radius.medium,
     marginBottom: 8,
   },
 });
