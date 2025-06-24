@@ -1,8 +1,7 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/navigation-stack";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-//Import Screens
 import HomeScreen from "../screens/HomeScreen";
 import AddReceiptScreen from "../screens/AddReceiptScreen";
 import StatsScreen from "../screens/StatsScreen";
@@ -15,8 +14,8 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Home">
         <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="AddReceipt" component={AddReceiptScreen} />
-        <Stack.Screen name="Stats" component={StatsScreen} />
+        <Stack.Screen name="Add Receipt" component={AddReceiptScreen} />
+        <Stack.Screen name="Statistics" component={StatsScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
