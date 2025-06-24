@@ -22,14 +22,14 @@ const SavedReceiptsScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {receipts.length === 0 ? (
-        <Text style={{ color: theme.subtleText, textAlign: "center" }}>
+        <Text style={{ color: theme.text, textAlign: "center" }}>
           No receipts saved yet.
         </Text>
       ) : (
         <FlatList
           data={receipts}
           keyExtractor={(item) => item.id.toString()}
-          numColumns={2}
+          numColumns={4}
           renderItem={renderItem}
           contentContainerStyle={styles.grid}
         />
@@ -42,6 +42,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    paddingTop: 80,
   },
   grid: {
     gap: 16,
