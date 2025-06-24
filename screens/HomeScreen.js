@@ -1,30 +1,45 @@
-import React from "react";
+import React, { useContext } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { ThemeContext } from "../context/ThemeContext";
+import { spacing } from "../constants/spacing";
+import { radius } from "../constants/radius";
+import { lightTheme, darkTheme } from "../constants/themes";
 
 const HomeScreen = ({ navigation }) => {
+  const { darkMode } = useContext(ThemeContext);
+  const theme = darkMode ? darkTheme : lightTheme;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome to Zenny!</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.title, { color: theme.text }]}>
+        Welcome to Zenny!
+      </Text>
 
       <TouchableOpacity
-        style={styles.button}
+        style={[styles.button, { backgroundColor: theme.primary }]}
         onPress={() => navigation.navigate("Add Receipt")}
       >
-        <Text style={styles.buttonText}>➕ Add Receipt</Text>
+        <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+          ➕ Add Receipt
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.button}
+        style={[styles.button, { backgroundColor: theme.primary }]}
         onPress={() => navigation.navigate("Statistics")}
       >
-        <Text style={styles.buttonText}>📊 View Stats</Text>
+        <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+          📊 View Stats
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.button}
+        style={[styles.button, { backgroundColor: theme.primary }]}
         onPress={() => navigation.navigate("Settings")}
       >
-        <Text style={styles.buttonText}>⚙️ Settings</Text>
+        <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+          ⚙️ Settings
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -34,24 +49,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    padding: 24,
-    backgroundColor: "#f9f9f9",
+    padding: spacing.screen,
   },
   title: {
     fontSize: 28,
     fontWeight: "600",
-    marginBottom: 40,
+    marginBottom: spacing.large,
     textAlign: "center",
   },
   button: {
-    backgroundColor: "#4D90FE",
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 16,
+    paddingVertical: spacing.inputPadding,
+    paddingHorizontal: spacing.screen,
+    borderRadius: radius.medium,
+    marginBottom: spacing.betweenElements,
   },
   buttonText: {
-    color: "#fff",
     fontSize: 18,
     textAlign: "center",
     fontWeight: "500",
