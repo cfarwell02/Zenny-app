@@ -12,6 +12,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
+  SafeAreaView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import DropDownPicker from "react-native-dropdown-picker";
@@ -21,6 +22,9 @@ import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 import { BudgetContext } from "../context/BudgetContext";
+import * as Notifications from "expo-notifications";
+import { NotificationContext } from "../context/NotificationContext";
+import { checkBudgetOverage } from "../utils/notifications";
 
 const AddReceiptScreen = () => {
   const [image, setImage] = useState(null);
@@ -37,15 +41,22 @@ const AddReceiptScreen = () => {
 
   const { addReceipt } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
-  const { addExpense } = useContext(BudgetContext);
+  const { budgets, expenses, addExpense } = useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const { notificationsEnabled } = useContext(NotificationContext);
 
-  const handleSaveReceipt = () => {
+  const handleSaveReceipt = async () => {
     if (!image || !amount || !selectedCategory) {
       Alert.alert(
         "Missing Information",
         "Please fill in all fields before saving."
       );
+      return;
+    }
+
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount)) {
+      Alert.alert("Invalid Input", "Please enter a valid number.");
       return;
     }
 
@@ -63,8 +74,43 @@ const AddReceiptScreen = () => {
       date: new Date().toISOString(),
     };
 
-    addExpense(expense);
-    addReceipt(newReceipt);
+    try {
+      addExpense(expense);
+      addReceipt(newReceipt);
+      console.log("✅ Expense and receipt added");
+    } catch (error) {
+      console.log("❌ Error adding expense or receipt:", error);
+    }
+
+    // 📊 Calculate budget stats
+    const categoryExpenses = [...expenses, expense].filter(
+      (e) => e.category === selectedCategory
+    );
+    const totalSpent = categoryExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+    const currentBudget = budgets.find((b) => b.category === selectedCategory);
+    const budgetLimit = currentBudget?.amount;
+    const percentSpent = budgetLimit ? (totalSpent / budgetLimit) * 100 : 0;
+    console.log("🔸 percentSpent:", percentSpent);
+    console.log("🔸 budgetLimit:", budgetLimit);
+    console.log("🔸 threshold:", threshold);
+    console.log("🔸 notificationsEnabled:", notificationsEnabled);
+
+    if (
+      notificationsEnabled &&
+      budgetLimit &&
+      threshold &&
+      percentSpent > threshold
+    ) {
+      console.log("Sending Notification");
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🧾 Receipt Saved",
+          body: `Receipt for ${selectedCategory} saved successfully.`,
+        },
+        trigger: null,
+      });
+    }
     setImage(null);
     setAmount("");
     setSelectedCategory(null);

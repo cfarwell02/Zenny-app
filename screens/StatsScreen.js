@@ -1,11 +1,21 @@
 import React, { useContext } from "react";
-import { View, Text, StyleSheet, ScrollView, SafeAreaView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  SafeAreaView,
+  Dimensions,
+} from "react-native";
 import { BudgetContext } from "../context/BudgetContext";
+import { ThemeContext } from "../context/ThemeContext";
+import { lightTheme, darkTheme } from "../constants/themes";
 import { PieChart } from "react-native-chart-kit";
-import { Dimensions } from "react-native";
 
 const StatsScreen = () => {
   const { expenses } = useContext(BudgetContext);
+  const { darkMode } = useContext(ThemeContext);
+  const theme = darkMode ? darkTheme : lightTheme;
 
   const categorySpent = {};
   expenses.forEach((e) => {
@@ -27,28 +37,33 @@ const StatsScreen = () => {
       name: category,
       amount,
       color: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF"][index % 5],
-      legendFontColor: "#333",
+      legendFontColor: theme.text,
       legendFontSize: 14,
     })
   );
 
   return (
-    <SafeAreaView>
-      <ScrollView style={styles.container}>
-        <Text style={styles.header}>📈 Spending Stats</Text>
-
-        <Text style={styles.total}>Total Spent: ${totalSpent.toFixed(2)}</Text>
+    <SafeAreaView style={{ backgroundColor: theme.background, flex: 1 }}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        <Text style={[styles.header, { color: theme.text }]}>
+          📈 Spending Stats
+        </Text>
+        <Text style={[styles.total, { color: theme.text }]}>
+          Total Spent: ${totalSpent.toFixed(2)}
+        </Text>
 
         <PieChart
           data={pieData}
           width={screenWidth - 40}
           height={220}
           chartConfig={{
-            backgroundColor: "#fff",
-            backgroundGradientFrom: "#fff",
-            backgroundGradientTo: "#fff",
-            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            labelColor: () => "#333",
+            backgroundColor: theme.background,
+            backgroundGradientFrom: theme.background,
+            backgroundGradientTo: theme.background,
+            color: (opacity = 1) => theme.text,
+            labelColor: () => theme.text,
           }}
           accessor="amount"
           backgroundColor="transparent"
@@ -57,13 +72,22 @@ const StatsScreen = () => {
 
         {Object.entries(categorySpent).map(([category, amount]) => (
           <View key={category} style={styles.statRow}>
-            <Text style={styles.label}>{category}:</Text>
-            <Text style={styles.value}>${amount.toFixed(2)}</Text>
+            <Text style={[styles.label, { color: theme.text }]}>
+              {category}:
+            </Text>
+            <Text style={[styles.value, { color: theme.text }]}>
+              ${amount.toFixed(2)}
+            </Text>
           </View>
         ))}
 
         {mostSpent.category && (
-          <Text style={styles.tip}>
+          <Text
+            style={[
+              styles.tip,
+              { backgroundColor: theme.card, color: theme.text },
+            ]}
+          >
             💡 You spent the most on{" "}
             <Text style={{ fontWeight: "bold" }}>{mostSpent.category}</Text> ($
             {mostSpent.amount.toFixed(2)}). Consider budgeting more carefully in
@@ -89,7 +113,6 @@ const styles = StyleSheet.create({
   tip: {
     marginTop: 30,
     fontSize: 16,
-    backgroundColor: "#f0f8ff",
     padding: 12,
     borderRadius: 8,
   },

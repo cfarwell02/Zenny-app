@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useContext } from "react";
 import {
   View,
   Text,
@@ -8,20 +8,22 @@ import {
   Alert,
 } from "react-native";
 import * as Notifications from "expo-notifications";
-
+import { NotificationContext } from "../context/NotificationContext"; // ✅ FIXED
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 
 const SettingsScreen = () => {
-  const [notifications, setNotifications] = useState(false);
+  const { notificationsEnabled, setNotificationsEnabled } =
+    useContext(NotificationContext);
   const { darkMode, toggleDarkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
   const handleToggleNotifications = async (value) => {
     if (value) {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } = await Notifications.getPermissionsAsync();
+      console.log("Notification Permissions:", status);
       if (status !== "granted") {
         Alert.alert(
           "Permission Denied",
@@ -30,7 +32,7 @@ const SettingsScreen = () => {
         return;
       }
     }
-    setNotifications(value);
+    setNotificationsEnabled(value);
   };
 
   const handleClearData = () => {
@@ -63,7 +65,7 @@ const SettingsScreen = () => {
       <View style={styles.settingRow}>
         <Text style={[styles.label, { color: theme.text }]}>Notifications</Text>
         <Switch
-          value={notifications}
+          value={notificationsEnabled}
           onValueChange={handleToggleNotifications}
         />
       </View>

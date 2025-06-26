@@ -8,9 +8,15 @@ import {
   SafeAreaView,
 } from "react-native";
 import { BudgetContext } from "../context/BudgetContext";
+import { ThemeContext } from "../context/ThemeContext"; // ✅ Use your custom context
+import { lightTheme, darkTheme } from "../constants/themes";
+import { radius } from "../constants/radius";
+import { spacing } from "../constants/spacing";
 
 const MyBudgetScreen = ({ navigation }) => {
   const { categoryBudgets, expenses } = useContext(BudgetContext);
+  const { darkMode } = useContext(ThemeContext); // ✅ Grab from your context
+  const theme = darkMode ? darkTheme : lightTheme;
 
   const categorySpent = {};
   expenses.forEach((e) => {
@@ -18,9 +24,13 @@ const MyBudgetScreen = ({ navigation }) => {
   });
 
   return (
-    <SafeAreaView>
-      <ScrollView style={styles.container}>
-        <Text style={styles.header}>💰 My Budgets</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        <Text style={[styles.header, { color: theme.text }]}>
+          💰 My Budgets
+        </Text>
 
         {Object.keys(categoryBudgets).map((category) => {
           const budget = categoryBudgets[category];
@@ -28,11 +38,23 @@ const MyBudgetScreen = ({ navigation }) => {
           const remaining = budget - spent;
 
           return (
-            <View key={category} style={styles.card}>
-              <Text style={styles.category}>{category}</Text>
-              <Text style={styles.detail}>Budget: ${budget.toFixed(2)}</Text>
-              <Text style={styles.detail}>Spent: ${spent.toFixed(2)}</Text>
-              <Text style={styles.detail}>
+            <View
+              key={category}
+              style={[
+                styles.card,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.category, { color: theme.text }]}>
+                {category}
+              </Text>
+              <Text style={[styles.detail, { color: theme.text }]}>
+                Budget: ${budget.toFixed(2)}
+              </Text>
+              <Text style={[styles.detail, { color: theme.text }]}>
+                Spent: ${spent.toFixed(2)}
+              </Text>
+              <Text style={[styles.detail, { color: theme.text }]}>
                 Remaining: ${remaining.toFixed(2)}
               </Text>
             </View>
@@ -40,10 +62,12 @@ const MyBudgetScreen = ({ navigation }) => {
         })}
 
         <TouchableOpacity
-          style={styles.manageButton}
+          style={[styles.manageButton, { backgroundColor: theme.primary }]}
           onPress={() => navigation.navigate("Manage Budgets")}
         >
-          <Text style={styles.manageText}>✏️ Manage Category Budgets</Text>
+          <Text style={[styles.manageText, { color: theme.buttonText }]}>
+            ✏️ Manage Category Budgets
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -52,7 +76,7 @@ const MyBudgetScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    padding: spacing.screen,
   },
   header: {
     fontSize: 22,
@@ -62,10 +86,8 @@ const styles = StyleSheet.create({
   card: {
     padding: 16,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
+    borderRadius: radius.medium,
     marginBottom: 16,
-    backgroundColor: "#f9f9f9",
   },
   category: {
     fontSize: 18,
@@ -76,13 +98,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   manageButton: {
-    backgroundColor: "#007bff",
     padding: 14,
-    borderRadius: 10,
+    borderRadius: radius.medium,
     alignItems: "center",
   },
   manageText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },

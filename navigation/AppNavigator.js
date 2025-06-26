@@ -1,6 +1,6 @@
 import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { NavigationContainer } from "@react-navigation/native";
 
 import HomeScreen from "../screens/HomeScreen";
 import AddReceiptScreen from "../screens/AddReceiptScreen";
@@ -12,18 +12,23 @@ import ManageBudgetScreen from "../screens/ManageBudgetsScreen";
 
 const Stack = createNativeStackNavigator();
 
-export default function AppNavigator() {
+const AppNavigator = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        initialRouteName="Home"
+        screenOptions={{ headerShown: false }}
+      >
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Saved Receipts" component={SavedReceiptsScreen} />
-        <Stack.Screen name="My Budget" component={MyBudgetScreen} />
         <Stack.Screen name="Add Receipt" component={AddReceiptScreen} />
+        <Stack.Screen name="My Budget" component={MyBudgetScreen} />
         <Stack.Screen name="Statistics" component={StatsScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Manage Budgets" component={ManageBudgetScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
-}
+};
+
+export default AppNavigator;
