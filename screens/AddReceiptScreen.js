@@ -21,6 +21,8 @@ import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 import { BudgetContext } from "../context/BudgetContext";
+import * as Notifications from "expo-notifications";
+import { NotificationContext } from "../context/NotificationContext";
 
 const AddReceiptScreen = () => {
   const [image, setImage] = useState(null);
@@ -40,6 +42,7 @@ const AddReceiptScreen = () => {
   const { categoryBudgets, threshold, expenses, addExpense } =
     useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const { notificationsEnabled } = useContext(NotificationContext);
 
   const handleSaveReceipt = async () => {
     if (!image || !amount || !selectedCategory) {
@@ -99,16 +102,16 @@ const AddReceiptScreen = () => {
     console.log("Total Spent:", totalSpent.toFixed(2));
     console.log("Percent Spent:", percentSpent.toFixed(2));
 
-    if (budgetLimit && percentSpent > threshold) {
+    if (budgetLimit && percentSpent > threshold && notificationsEnabled) {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "⚠️ Budget Threshold Reached",
-          body: `You’ve used ${percentSpent.toFixed(
+          body: `You've used ${percentSpent.toFixed(
             1
           )}% of your ${selectedCategory} budget.`,
           sound: true,
         },
-        trigger: null, // Sends immediately
+        trigger: null,
       });
     }
   };
