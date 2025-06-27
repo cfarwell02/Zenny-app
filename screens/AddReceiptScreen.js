@@ -22,9 +22,6 @@ import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 import { BudgetContext } from "../context/BudgetContext";
-import * as Notifications from "expo-notifications";
-import { NotificationContext } from "../context/NotificationContext";
-import { checkBudgetOverage } from "../utils/notifications";
 
 const AddReceiptScreen = () => {
   const [image, setImage] = useState(null);
@@ -43,7 +40,6 @@ const AddReceiptScreen = () => {
   const { darkMode } = useContext(ThemeContext);
   const { budgets, expenses, addExpense } = useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
-  const { notificationsEnabled } = useContext(NotificationContext);
 
   const handleSaveReceipt = async () => {
     if (!image || !amount || !selectedCategory) {
@@ -74,15 +70,14 @@ const AddReceiptScreen = () => {
       date: new Date().toISOString(),
     };
 
-    try {
-      addExpense(expense);
-      addReceipt(newReceipt);
-      console.log("✅ Expense and receipt added");
-    } catch (error) {
-      console.log("❌ Error adding expense or receipt:", error);
-    }
+    addExpense(expense);
+    addReceipt(newReceipt);
 
-    // 📊 Calculate budget stats
+    setImage(null);
+    setAmount("");
+    setSelectedCategory(null);
+    Alert.alert("Success", "Receipt saved successfully!");
+
     const categoryExpenses = [...expenses, expense].filter(
       (e) => e.category === selectedCategory
     );
@@ -91,30 +86,13 @@ const AddReceiptScreen = () => {
     const currentBudget = budgets.find((b) => b.category === selectedCategory);
     const budgetLimit = currentBudget?.amount;
     const percentSpent = budgetLimit ? (totalSpent / budgetLimit) * 100 : 0;
-    console.log("🔸 percentSpent:", percentSpent);
-    console.log("🔸 budgetLimit:", budgetLimit);
-    console.log("🔸 threshold:", threshold);
-    console.log("🔸 notificationsEnabled:", notificationsEnabled);
 
-    if (
-      notificationsEnabled &&
-      budgetLimit &&
-      threshold &&
-      percentSpent > threshold
-    ) {
-      console.log("Sending Notification");
-      Notifications.scheduleNotificationAsync({
-        content: {
-          title: "🧾 Receipt Saved",
-          body: `Receipt for ${selectedCategory} saved successfully.`,
-        },
-        trigger: null,
-      });
+    if (budgetLimit && threshold && percentSpent > threshold) {
+      Alert.alert(
+        "Budget Threshold",
+        `You have exceeded your budget threshold for ${category}`
+      );
     }
-    setImage(null);
-    setAmount("");
-    setSelectedCategory(null);
-    Alert.alert("Success", "Receipt saved successfully!");
   };
 
   const handleInsertPhoto = async () => {
@@ -168,7 +146,7 @@ const AddReceiptScreen = () => {
         style={[
           styles.container,
           { backgroundColor: theme.background, flex: 1 },
-        ]} // Add flex: 1 here
+        ]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={100}
       >
@@ -226,6 +204,12 @@ const AddReceiptScreen = () => {
                       zIndex: 1000,
                       position: "absolute",
                       top: Platform.OS === "android" ? 50 : 40,
+                    }}
+                    textStyle={{
+                      color: theme.text,
+                    }}
+                    placeholderStyle={{
+                      color: theme.placeholder,
                     }}
                   />
                 </View>

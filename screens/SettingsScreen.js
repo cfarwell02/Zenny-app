@@ -7,33 +7,14 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
-import * as Notifications from "expo-notifications";
-import { NotificationContext } from "../context/NotificationContext"; // ✅ FIXED
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 
 const SettingsScreen = () => {
-  const { notificationsEnabled, setNotificationsEnabled } =
-    useContext(NotificationContext);
   const { darkMode, toggleDarkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
-
-  const handleToggleNotifications = async (value) => {
-    if (value) {
-      const { status } = await Notifications.getPermissionsAsync();
-      console.log("Notification Permissions:", status);
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "To receive budget alerts, enable notifications in your device settings."
-        );
-        return;
-      }
-    }
-    setNotificationsEnabled(value);
-  };
 
   const handleClearData = () => {
     Alert.alert(
@@ -60,14 +41,6 @@ const SettingsScreen = () => {
       <View style={styles.settingRow}>
         <Text style={[styles.label, { color: theme.text }]}>Dark Mode</Text>
         <Switch value={darkMode} onValueChange={toggleDarkMode} />
-      </View>
-
-      <View style={styles.settingRow}>
-        <Text style={[styles.label, { color: theme.text }]}>Notifications</Text>
-        <Switch
-          value={notificationsEnabled}
-          onValueChange={handleToggleNotifications}
-        />
       </View>
 
       <TouchableOpacity
