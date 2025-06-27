@@ -23,6 +23,7 @@ import { radius } from "../constants/radius";
 import { BudgetContext } from "../context/BudgetContext";
 import * as Notifications from "expo-notifications";
 import { NotificationContext } from "../context/NotificationContext";
+import { supabase } from "../supabase";
 
 const AddReceiptScreen = () => {
   const [image, setImage] = useState(null);
@@ -80,6 +81,36 @@ const AddReceiptScreen = () => {
     // Save the new expense and receipt
     addExpense(expense);
     addReceipt(newReceipt);
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.log("❌ Failed to get user:", userError?.message);
+        return;
+      }
+
+      const { error: insertError } = await supabase.from("receipts").insert([
+        {
+          user_id: user.id,
+          amount: parsedAmount,
+          category: selectedCategory,
+          date: new Date().toISOString(),
+          image_url: image,
+        },
+      ]);
+
+      if (insertError) {
+        console.error("❌ Supabase insert failed:", insertError.message);
+      } else {
+        console.log("✅ Receipt saved to Supabase!");
+      }
+    } catch (err) {
+      console.error("⚠️ Unexpected Supabase error:", err.message);
+    }
 
     // Reset form
     setImage(null);
