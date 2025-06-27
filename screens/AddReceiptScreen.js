@@ -12,7 +12,6 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
-  SafeAreaView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import DropDownPicker from "react-native-dropdown-picker";
@@ -38,7 +37,8 @@ const AddReceiptScreen = () => {
 
   const { addReceipt } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
-  const { budgets, expenses, addExpense } = useContext(BudgetContext);
+  const { categoryBudgets, threshold, expenses, addExpense } =
+    useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
   const handleSaveReceipt = async () => {
@@ -50,6 +50,10 @@ const AddReceiptScreen = () => {
       return;
     }
 
+    console.log("🧾 Saving receipt...");
+    console.log("Selected Category:", selectedCategory);
+    console.log("Category Budgets:", categoryBudgets);
+
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount)) {
       Alert.alert("Invalid Input", "Please enter a valid number.");
@@ -59,39 +63,53 @@ const AddReceiptScreen = () => {
     const newReceipt = {
       id: Date.now(),
       image,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       category: selectedCategory,
       date: new Date().toISOString(),
     };
 
     const expense = {
-      amount: Number(amount),
+      amount: parsedAmount,
       category: selectedCategory,
       date: new Date().toISOString(),
     };
 
+    // Save the new expense and receipt
     addExpense(expense);
     addReceipt(newReceipt);
 
+    // Reset form
     setImage(null);
     setAmount("");
     setSelectedCategory(null);
     Alert.alert("Success", "Receipt saved successfully!");
 
+    // Calculate total spent for the category including this new expense
     const categoryExpenses = [...expenses, expense].filter(
       (e) => e.category === selectedCategory
     );
     const totalSpent = categoryExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-    const currentBudget = budgets.find((b) => b.category === selectedCategory);
-    const budgetLimit = currentBudget?.amount;
+    const budgetLimit = categoryBudgets[selectedCategory];
     const percentSpent = budgetLimit ? (totalSpent / budgetLimit) * 100 : 0;
 
-    if (budgetLimit && threshold && percentSpent > threshold) {
-      Alert.alert(
-        "Budget Threshold",
-        `You have exceeded your budget threshold for ${category}`
-      );
+    console.log("📊 DEBUG:");
+    console.log("Budget Limit:", budgetLimit);
+    console.log("Threshold (%):", threshold);
+    console.log("Total Spent:", totalSpent.toFixed(2));
+    console.log("Percent Spent:", percentSpent.toFixed(2));
+
+    if (budgetLimit && percentSpent > threshold) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "⚠️ Budget Threshold Reached",
+          body: `You’ve used ${percentSpent.toFixed(
+            1
+          )}% of your ${selectedCategory} budget.`,
+          sound: true,
+        },
+        trigger: null, // Sends immediately
+      });
     }
   };
 

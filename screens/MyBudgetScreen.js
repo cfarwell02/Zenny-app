@@ -49,13 +49,13 @@ const MyBudgetScreen = ({ navigation }) => {
                 {category}
               </Text>
               <Text style={[styles.detail, { color: theme.text }]}>
-                Budget: ${budget.toFixed(2)}
+                Budget: ${(parseFloat(budget) || 0).toFixed(2)}
               </Text>
               <Text style={[styles.detail, { color: theme.text }]}>
-                Spent: ${spent.toFixed(2)}
+                Spent: ${(spent ?? 0).toFixed(2)}
               </Text>
               <Text style={[styles.detail, { color: theme.text }]}>
-                Remaining: ${remaining.toFixed(2)}
+                Remaining: ${(remaining ?? 0).toFixed(2)}
               </Text>
             </View>
           );

@@ -3,16 +3,16 @@ import React, { createContext, useState } from "react";
 export const BudgetContext = createContext();
 
 export const BudgetProvider = ({ children }) => {
-  const [budget, setBudget] = useState(0); // default budget in $
+  const [budgets, setBudgets] = useState([]);
   const [categoryBudgets, setCategoryBudgets] = useState({
-    Food: 0,
-    Shopping: 0,
-    Transport: 0,
-    Bills: 0,
-    Other: 0,
+    Food: [],
+    Shopping: [],
+    Transport: [],
+    Bills: [],
+    Other: [],
   }); // default budget
 
-  const [threshold, setThreshold] = useState(75);
+  const [threshold, setThreshold] = useState([]);
   const [expenses, setExpenses] = useState([]);
 
   const addExpense = (expense) => {
@@ -29,15 +29,15 @@ export const BudgetProvider = ({ children }) => {
   return (
     <BudgetContext.Provider
       value={{
-        budget,
-        setBudget,
+        budgets,
+        setBudgets,
+        categoryBudgets,
+        setCategoryBudgets,
+        updateCategoryBudget,
         threshold,
         setThreshold,
         expenses,
         setExpenses,
-        categoryBudgets,
-        setCategoryBudgets,
-        updateCategoryBudget,
         addExpense,
       }}
     >
