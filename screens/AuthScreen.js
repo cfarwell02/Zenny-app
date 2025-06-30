@@ -11,6 +11,10 @@ import {
 import { supabase } from "../supabase";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
+import * as WebBrowser from "expo-web-browser";
+import * as AuthSession from "expo-auth-session";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const AuthScreen = ({ onAuthSuccess }) => {
   const [email, setEmail] = useState("");
@@ -48,55 +52,32 @@ const AuthScreen = ({ onAuthSuccess }) => {
     }
   };
 
+  const signInWithGoogle = async () => {
+    const redirectTo = AuthSession.makeRedirectUri({ useProxy: true });
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+      },
+    });
+
+    if (error) {
+      console.error("❌ Google Sign-In Error:", error.message);
+      Alert.alert("Sign-In Failed", error.message);
+    } else {
+      console.log("✅ Redirecting to Google login...");
+      // Auth will redirect back to app automatically
+    }
+  };
+
   return (
     <KeyboardAvoidingView>
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
         <View style={{ padding: 20 }}>
-          <Text style={{ fontSize: 24, marginBottom: 20 }}>
-            {isSigningUp ? "Sign Up" : "Log In"}
-          </Text>
-          <TextInput
-            placeholder="Email"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            onChangeText={setEmail}
-            value={email}
-            placeholderTextColor={theme.placeholder}
-            style={{
-              marginBottom: 10,
-              borderBottomWidth: 1,
-              borderBottomColor: theme.border,
-              color: theme.text,
-              backgroundColor: theme.input,
-            }}
-          />
-
-          <TextInput
-            placeholder="Password"
-            secureTextEntry
-            onChangeText={setPassword}
-            value={password}
-            placeholderTextColor={theme.placeholder}
-            style={{
-              marginBottom: 20,
-              borderBottomWidth: 1,
-              borderBottomColor: theme.border,
-              color: theme.text,
-              backgroundColor: theme.input,
-            }}
-          />
-          <Button
-            title={isSigningUp ? "Sign Up" : "Log In"}
-            onPress={handleAuth}
-          />
-          <Text
-            style={{ marginTop: 20, textAlign: "center", color: "blue" }}
-            onPress={() => setIsSigningUp(!isSigningUp)}
-          >
-            {isSigningUp
-              ? "Already have an account? Log in"
-              : "No account? Sign up"}
-          </Text>
+          <View style={{ marginTop: 20 }}>
+            <Button title="Sign In with Google" onPress={signInWithGoogle} />
+          </View>
         </View>
       </SafeAreaView>
     </KeyboardAvoidingView>
