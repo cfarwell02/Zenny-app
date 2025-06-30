@@ -1,14 +1,13 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import * as Notifications from "expo-notifications";
 import { LogBox } from "react-native";
 import AppNavigator from "./navigation/AppNavigator";
 import { ReceiptProvider } from "./context/ReceiptContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { BudgetProvider } from "./context/BudgetContext";
-import {
-  NotificationContext,
-  NotificationProvider,
-} from "./context/NotificationContext";
+import { NotificationProvider } from "./context/NotificationContext";
+import { supabase } from "./supabase";
+import AuthScreen from "./screens/AuthScreen"; // create this file
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -19,12 +18,40 @@ Notifications.setNotificationHandler({
 });
 
 export default function App() {
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <NotificationProvider>
       <ThemeProvider>
         <ReceiptProvider>
           <BudgetProvider>
-            <AppNavigator />
+            {session ? (
+              <AppNavigator />
+            ) : (
+              <AuthScreen
+                onAuthSuccess={() =>
+                  supabase.auth
+                    .getSession()
+                    .then(({ data }) => setSession(data.session))
+                }
+              />
+            )}
           </BudgetProvider>
         </ReceiptProvider>
       </ThemeProvider>
