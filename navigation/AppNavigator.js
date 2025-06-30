@@ -9,6 +9,7 @@ import SettingsScreen from "../screens/SettingsScreen";
 import SavedReceiptsScreen from "../screens/SavedReceipts";
 import MyBudgetScreen from "../screens/MyBudgetScreen";
 import ManageBudgetScreen from "../screens/ManageBudgetsScreen";
+import AuthScreen from "../screens/AuthScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -19,6 +20,7 @@ const AppNavigator = () => {
         initialRouteName="Home"
         screenOptions={{ headerShown: false }}
       >
+        <Stack.Screen name="Auth" component={AuthScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Saved Receipts" component={SavedReceiptsScreen} />
         <Stack.Screen name="Add Receipt" component={AddReceiptScreen} />
