@@ -8,14 +8,14 @@ import {
   SafeAreaView,
 } from "react-native";
 import { BudgetContext } from "../context/BudgetContext";
-import { ThemeContext } from "../context/ThemeContext"; // ✅ Use your custom context
+import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 
 const MyBudgetScreen = ({ navigation }) => {
   const { categoryBudgets, expenses } = useContext(BudgetContext);
-  const { darkMode } = useContext(ThemeContext); // ✅ Grab from your context
+  const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
   const categorySpent = {};

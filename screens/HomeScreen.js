@@ -78,8 +78,8 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    paddingTop: 100, // replaces marginTop, and avoids extra spacing
-    marginBottom: 0, // controls space between title and buttonGroup
+    paddingTop: 100,
+    marginBottom: 0,
   },
   title: {
     fontSize: 28,

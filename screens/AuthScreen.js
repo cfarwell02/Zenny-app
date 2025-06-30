@@ -66,8 +66,8 @@ const AuthScreen = ({ onAuthSuccess }) => {
               marginBottom: 10,
               borderBottomWidth: 1,
               borderBottomColor: theme.border,
-              color: theme.text, // 👈 makes input text visible
-              backgroundColor: theme.input, // 👈 optional for full background field
+              color: theme.text,
+              backgroundColor: theme.input,
             }}
           />
 
