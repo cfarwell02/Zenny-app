@@ -57,9 +57,6 @@ const AuthScreen = ({ onAuthSuccess }) => {
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo,
-      },
     });
 
     if (error) {
