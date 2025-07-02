@@ -28,6 +28,7 @@ import { supabase } from "../supabase";
 const AddReceiptScreen = () => {
   const [image, setImage] = useState(null);
   const [amount, setAmount] = useState("");
+  const [tag, setTag] = useState("");
   const [open, setOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryItems, setCategoryItems] = useState([
@@ -70,12 +71,14 @@ const AddReceiptScreen = () => {
       amount: parsedAmount,
       category: selectedCategory,
       date: new Date().toISOString(),
+      tag: tag.trim(),
     };
 
     const expense = {
       amount: parsedAmount,
       category: selectedCategory,
       date: new Date().toISOString(),
+      tag: tag.trim(),
     };
 
     // Save the new expense and receipt
@@ -100,6 +103,7 @@ const AddReceiptScreen = () => {
           category: selectedCategory,
           date: new Date().toISOString(),
           image_url: image,
+          tag: tag.trim(),
         },
       ]);
 
@@ -115,6 +119,7 @@ const AddReceiptScreen = () => {
     // Reset form
     setImage(null);
     setAmount("");
+    setTag("");
     setSelectedCategory(null);
     Alert.alert("Success", "Receipt saved successfully!");
 
@@ -235,6 +240,19 @@ const AddReceiptScreen = () => {
                   keyboardType="numeric"
                   value={amount}
                   onChangeText={setAmount}
+                />
+                <TextInput
+                  placeholder="Add a tag (e.g., 'Lunch with Mom')"
+                  value={tag}
+                  onChangeText={setTag}
+                  style={{
+                    borderWidth: 1,
+                    padding: 10,
+                    marginBottom: 12,
+                    borderRadius: 6,
+                    backgroundColor: theme.inputBackground,
+                    color: theme.text,
+                  }}
                 />
 
                 <View style={styles.dropDownWrapper}>

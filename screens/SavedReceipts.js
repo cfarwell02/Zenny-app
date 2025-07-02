@@ -1,5 +1,12 @@
-import React, { useContext } from "react";
-import { View, Text, Image, StyleSheet, FlatList } from "react-native";
+import React, { useContext, useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  FlatList,
+  TextInput,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ReceiptContext } from "../context/ReceiptContext";
 import { ThemeContext } from "../context/ThemeContext";
@@ -10,6 +17,16 @@ import { radius } from "../constants/radius";
 const SavedReceiptsScreen = () => {
   const { receipts } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
+  const [searchTag, setSearchTag] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categoryItems, setCategoryItems] = useState([
+    { label: "Food", value: "Food" },
+    { label: "Shopping", value: "Shopping" },
+    { label: "Transport", value: "Transport" },
+    { label: "Bills", value: "Bills" },
+    { label: "Other", value: "Other" },
+  ]);
   const theme = darkMode ? darkTheme : lightTheme;
 
   const renderItem = ({ item }) => (
@@ -17,8 +34,24 @@ const SavedReceiptsScreen = () => {
       <Image source={{ uri: item.image }} style={styles.image} />
       <Text style={{ color: theme.text }}>${item.amount.toFixed(2)}</Text>
       <Text style={{ color: theme.subtleText }}>{item.category}</Text>
+      {item.tag ? (
+        <Text style={[styles.tagText, { color: theme.accent }]}>
+          #{item.tag}
+        </Text>
+      ) : null}
     </View>
   );
+
+  const filteredReceipts = receipts.filter((r) => {
+    const tagMatch = searchTag
+      ? r.tag?.toLowerCase().includes(searchTag.toLowerCase())
+      : true;
+
+    const categoryMatch = selectedCategory
+      ? r.category === selectedCategory
+      : true;
+    return tagMatch && categoryMatch;
+  });
 
   return (
     <SafeAreaView
@@ -30,13 +63,68 @@ const SavedReceiptsScreen = () => {
           No receipts saved yet.
         </Text>
       ) : (
-        <FlatList
-          data={receipts}
-          keyExtractor={(item) => item.id.toString()}
-          numColumns={4}
-          renderItem={renderItem}
-          contentContainerStyle={styles.grid}
-        />
+        <>
+          <TextInput
+            placeholder="Search by tag..."
+            placeholderTextColor={theme.placeholder}
+            value={searchTag}
+            onChangeText={setSearchTag}
+            style={[
+              styles.searchInput,
+              {
+                borderColor: theme.border,
+                color: theme.text,
+                backgroundColor: theme.input,
+              },
+            ]}
+          />
+
+          <View style={{ zIndex: 1000 }}>
+            <DropDownPicker
+              open={categoryOpen}
+              value={selectedCategory}
+              items={categoryItems}
+              setOpen={setCategoryOpen}
+              setValue={setSelectedCategory}
+              setItems={setCategoryItems}
+              placeholder="Filter by category..."
+              style={{
+                borderColor: theme.border,
+                backgroundColor: theme.input,
+                marginBottom: 16,
+              }}
+              dropDownContainerStyle={{
+                borderColor: theme.border,
+                backgroundColor: theme.input,
+              }}
+              textStyle={{
+                color: theme.text,
+              }}
+              placeholderStyle={{
+                color: theme.placeholder,
+              }}
+            />
+          </View>
+
+          <FlatList
+            data={filteredReceipts}
+            keyExtractor={(item) => item.id.toString()}
+            numColumns={4}
+            renderItem={renderItem}
+            contentContainerStyle={styles.grid}
+            ListEmptyComponent={
+              <Text
+                style={{
+                  color: theme.subtleText,
+                  textAlign: "center",
+                  marginTop: 20,
+                }}
+              >
+                No matching receipts found.
+              </Text>
+            }
+          />
+        </>
       )}
     </SafeAreaView>
   );
@@ -49,6 +137,7 @@ const styles = StyleSheet.create({
   },
   grid: {
     gap: 16,
+    flexGrow: 1,
   },
   card: {
     flex: 1,
@@ -62,6 +151,18 @@ const styles = StyleSheet.create({
     height: 125,
     borderRadius: radius.medium,
     marginBottom: 8,
+  },
+  tagText: {
+    marginTop: 4,
+    fontStyle: "italic",
+    fontSize: 12,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderRadius: radius.medium,
+    padding: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
   },
 });
 
