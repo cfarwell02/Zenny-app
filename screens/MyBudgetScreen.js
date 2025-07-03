@@ -62,11 +62,24 @@ const MyBudgetScreen = ({ navigation }) => {
         })}
 
         <TouchableOpacity
+          style={[
+            styles.manageButton,
+            { backgroundColor: theme.primary },
+            { marginBottom: 16 },
+          ]}
+          onPress={() => navigation.navigate("Manage Categories")}
+        >
+          <Text style={[styles.manageText, { color: theme.buttonText }]}>
+            ✏️ Manage Categories
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.manageButton, { backgroundColor: theme.primary }]}
           onPress={() => navigation.navigate("Manage Budgets")}
         >
           <Text style={[styles.manageText, { color: theme.buttonText }]}>
-            ✏️ Manage Category Budgets
+            ✏️ Manage Budgets
           </Text>
         </TouchableOpacity>
       </ScrollView>

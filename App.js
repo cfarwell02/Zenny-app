@@ -8,6 +8,7 @@ import { BudgetProvider } from "./context/BudgetContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { supabase } from "./supabase";
 import AuthScreen from "./screens/AuthScreen"; // create this file
+import { NavigationContainer } from "@react-navigation/native";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -41,17 +42,19 @@ export default function App() {
       <ThemeProvider>
         <ReceiptProvider>
           <BudgetProvider>
-            {session ? (
-              <AppNavigator />
-            ) : (
-              <AuthScreen
-                onAuthSuccess={() =>
-                  supabase.auth
-                    .getSession()
-                    .then(({ data }) => setSession(data.session))
-                }
-              />
-            )}
+            <NavigationContainer>
+              {session ? (
+                <AppNavigator />
+              ) : (
+                <AuthScreen
+                  onAuthSuccess={() =>
+                    supabase.auth
+                      .getSession()
+                      .then(({ data }) => setSession(data.session))
+                  }
+                />
+              )}
+            </NavigationContainer>
           </BudgetProvider>
         </ReceiptProvider>
       </ThemeProvider>

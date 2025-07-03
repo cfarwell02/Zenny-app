@@ -36,7 +36,6 @@ const AddReceiptScreen = () => {
     { label: "Shopping", value: "Shopping" },
     { label: "Transport", value: "Transport" },
     { label: "Bills", value: "Bills" },
-    { label: "Other", value: "Other" },
   ]);
 
   const { addReceipt } = useContext(ReceiptContext);
@@ -47,7 +46,7 @@ const AddReceiptScreen = () => {
   const { notificationsEnabled } = useContext(NotificationContext);
 
   const handleSaveReceipt = async () => {
-    if (!image || !amount || !selectedCategory) {
+    if (!amount || !selectedCategory) {
       Alert.alert(
         "Missing Information",
         "Please fill in all fields before saving."

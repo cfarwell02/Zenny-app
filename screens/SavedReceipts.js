@@ -13,6 +13,7 @@ import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
+import DropDownPicker from "react-native-dropdown-picker";
 
 const SavedReceiptsScreen = () => {
   const { receipts } = useContext(ReceiptContext);
@@ -21,11 +22,11 @@ const SavedReceiptsScreen = () => {
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryItems, setCategoryItems] = useState([
+    { label: "All Categories", value: null },
     { label: "Food", value: "Food" },
     { label: "Shopping", value: "Shopping" },
     { label: "Transport", value: "Transport" },
     { label: "Bills", value: "Bills" },
-    { label: "Other", value: "Other" },
   ]);
   const theme = darkMode ? darkTheme : lightTheme;
 
@@ -43,13 +44,14 @@ const SavedReceiptsScreen = () => {
   );
 
   const filteredReceipts = receipts.filter((r) => {
-    const tagMatch = searchTag
-      ? r.tag?.toLowerCase().includes(searchTag.toLowerCase())
+    const tagMatch = searchTag.trim()
+      ? r.tag?.toLowerCase().includes(searchTag.trim().toLowerCase())
       : true;
 
-    const categoryMatch = selectedCategory
-      ? r.category === selectedCategory
-      : true;
+    const categoryMatch =
+      selectedCategory && selectedCategory !== ""
+        ? r.category.toLowerCase() === selectedCategory.toLowerCase()
+        : true;
     return tagMatch && categoryMatch;
   });
 
@@ -87,7 +89,10 @@ const SavedReceiptsScreen = () => {
               setOpen={setCategoryOpen}
               setValue={setSelectedCategory}
               setItems={setCategoryItems}
-              placeholder="Filter by category..."
+              placeholder="All Categories"
+              onChangeValue={(value) => {
+                setSelectedCategory(value || null); // 👈 key fix
+              }}
               style={{
                 borderColor: theme.border,
                 backgroundColor: theme.input,
