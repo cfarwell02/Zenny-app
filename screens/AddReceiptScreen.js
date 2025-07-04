@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
@@ -21,9 +21,11 @@ import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 import { BudgetContext } from "../context/BudgetContext";
+import { CategoryContext } from "../context/CategoryContext";
 import * as Notifications from "expo-notifications";
 import { NotificationContext } from "../context/NotificationContext";
-import { supabase } from "../supabase";
+import auth from "@react-native-firebase/auth";
+import firestore from "@react-native-firebase/firestore";
 
 const AddReceiptScreen = () => {
   const [image, setImage] = useState(null);
@@ -31,19 +33,23 @@ const AddReceiptScreen = () => {
   const [tag, setTag] = useState("");
   const [open, setOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [categoryItems, setCategoryItems] = useState([
-    { label: "Food", value: "Food" },
-    { label: "Shopping", value: "Shopping" },
-    { label: "Transport", value: "Transport" },
-    { label: "Bills", value: "Bills" },
-  ]);
+  const [categoryItems, setCategoryItems] = useState([]);
 
+  const { categories } = useContext(CategoryContext);
   const { addReceipt } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
   const { categoryBudgets, threshold, expenses, addExpense } =
     useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
   const { notificationsEnabled } = useContext(NotificationContext);
+
+  useEffect(() => {
+    const formatted = categories.map((cat) => ({
+      label: cat,
+      value: cat,
+    }));
+    setCategoryItems(formatted);
+  }, [categories]);
 
   const handleSaveReceipt = async () => {
     if (!amount || !selectedCategory) {
@@ -85,34 +91,26 @@ const AddReceiptScreen = () => {
     addReceipt(newReceipt);
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const user = auth().currentUser;
 
-      if (userError || !user) {
-        console.log("❌ Failed to get user:", userError?.message);
+      if (!user) {
+        console.log("❌ No logged-in user found.");
         return;
       }
 
-      const { error: insertError } = await supabase.from("receipts").insert([
-        {
-          user_id: user.id,
-          amount: parsedAmount,
-          category: selectedCategory,
-          date: new Date().toISOString(),
-          image_url: image,
-          tag: tag.trim(),
-        },
-      ]);
+      await firestore().collection("receipts").add({
+        user_id: user.uid,
+        amount: parsedAmount,
+        category: selectedCategory,
+        date: new Date().toISOString(),
+        image_url: image,
+        tag: tag.trim(),
+        created_at: firestore.FieldValue.serverTimestamp(),
+      });
 
-      if (insertError) {
-        console.error("❌ Supabase insert failed:", insertError.message);
-      } else {
-        console.log("✅ Receipt saved to Supabase!");
-      }
+      console.log("✅ Receipt saved to Firestore!");
     } catch (err) {
-      console.error("⚠️ Unexpected Supabase error:", err.message);
+      console.error("⚠️ Firestore error:", err.message);
     }
 
     // Reset form

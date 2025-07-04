@@ -1,16 +1,12 @@
-import React, { createContext, useState } from "react";
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { CategoryContext } from "./CategoryContext";
 
 export const BudgetContext = createContext();
 
 export const BudgetProvider = ({ children }) => {
+  const { categories } = useContext(CategoryContext);
   const [budgets, setBudgets] = useState([]);
-  const [categoryBudgets, setCategoryBudgets] = useState({
-    Food: [],
-    Shopping: [],
-    Transport: [],
-    Bills: [],
-    Other: [],
-  }); // default budget
+  const [categoryBudgets, setCategoryBudgets] = useState({});
 
   const [threshold, setThreshold] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -25,6 +21,21 @@ export const BudgetProvider = ({ children }) => {
       [category]: amount,
     }));
   };
+
+  useEffect(() => {
+    // Ensure all categories are tracked in categoryBudgets
+    setCategoryBudgets((prev) => {
+      const updated = { ...prev };
+
+      categories.forEach((cat) => {
+        if (updated[cat] === undefined) {
+          updated[cat] = 0; // Initialize new category with $0 budget
+        }
+      });
+
+      return updated;
+    });
+  }, [categories]);
 
   return (
     <BudgetContext.Provider

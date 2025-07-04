@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "813553055334",
+    "project_id": "zenny-login",
+    "storage_bucket": "zenny-login.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:813553055334:android:df2499780742fca0a25fa7",
+        "android_client_info": {
+          "package_name": "com.cfarwell02.Zennyapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "813553055334-sfkl8a3fh1k3lbodp2raqbvl8ut83qg7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cfarwell02.Zennyapp",
+            "certificate_hash": "fe802e86ca6a9eae9b04557dcad947c77fa39139"
+          }
+        },
+        {
+          "client_id": "813553055334-haihet8pud9hmb8dmbrrhn3858vum4sd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjnC_R7TbyVTz_HBANQ1Qhah6YSJFSpRo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "813553055334-haihet8pud9hmb8dmbrrhn3858vum4sd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

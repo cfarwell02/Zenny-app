@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,21 +14,28 @@ import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 import DropDownPicker from "react-native-dropdown-picker";
+import { CategoryContext } from "../context/CategoryContext";
 
 const SavedReceiptsScreen = () => {
   const { receipts } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
+  const { categories } = useContext(CategoryContext);
   const [searchTag, setSearchTag] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [categoryItems, setCategoryItems] = useState([
-    { label: "All Categories", value: null },
-    { label: "Food", value: "Food" },
-    { label: "Shopping", value: "Shopping" },
-    { label: "Transport", value: "Transport" },
-    { label: "Bills", value: "Bills" },
-  ]);
+  const [categoryItems, setCategoryItems] = useState([]);
   const theme = darkMode ? darkTheme : lightTheme;
+
+  useEffect(() => {
+    const formatted = [
+      { label: "All Categories", value: null },
+      ...categories.map((cat) => ({
+        label: cat,
+        value: cat,
+      })),
+    ];
+    setCategoryItems(formatted);
+  }, [categories]);
 
   const renderItem = ({ item }) => (
     <View style={[styles.card, { backgroundColor: theme.card }]}>

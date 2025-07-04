@@ -15,8 +15,8 @@ import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 import * as Notifications from "expo-notifications";
 import { NotificationContext } from "../context/NotificationContext";
-import { supabase } from "../supabase";
 import { useNavigation } from "@react-navigation/native";
+import auth from "@react-native-firebase/auth";
 
 const SettingsScreen = () => {
   const { darkMode, toggleDarkMode } = useContext(ThemeContext);
@@ -82,54 +82,47 @@ const SettingsScreen = () => {
   };
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      if (Platform.OS === "web") {
-        alert("Sign Out Failed: " + error.message);
-      } else {
-        Alert.alert("Sign Out Failed", error.message);
-      }
-    } else {
-      if (Platform.OS === "web") {
-        alert("Signed Out");
-      } else {
-        Alert.alert("Signed Out", "You have been logged out.");
-      }
+    try {
+      await auth().signOut();
+      Alert.alert("Signed Out", "You have been logged out.");
       navigation.replace("Auth");
+    } catch (error) {
+      Alert.alert("Sign Out Failed", error.message);
     }
   };
 
   const handleDeleteAccount = async () => {
-    const user = supabase.auth.getUser
-      ? (await supabase.auth.getUser()).data.user
-      : null;
-
+    const user = auth().currentUser;
     if (!user) {
-      alert("No user is currently signed in.");
+      Alert.alert("Error", "No user is currently signed in.");
       return;
     }
 
-    const { error } = await supabase.auth.admin.deleteUser(user.id);
-
-    if (error) {
-      if (Platform.OS === "web") {
-        alert("Delete Failed: " + error.message);
+    try {
+      await user.delete(); // Only works if user recently signed in
+      Alert.alert("Account deleted", "Your account has been removed.");
+      navigation.replace("Auth");
+    } catch (error) {
+      if (error.code === "auth/requires-recent-login") {
+        Alert.alert(
+          "Re-authentication Required",
+          "Please sign in again to delete your account."
+        );
       } else {
         Alert.alert("Delete Failed", error.message);
       }
-    } else {
-      if (Platform.OS === "web") {
-        alert("Account deleted");
-      } else {
-        Alert.alert("Account deleted", "Your account has been removed.");
-      }
-      navigation.replace("Auth");
     }
   };
 
   const confirmDeleteAccount = () => {
-    alert("Delete Account feature coming soon!");
+    Alert.alert(
+      "Delete Account?",
+      "Are you sure you want to permanently delete your account?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", onPress: handleDeleteAccount, style: "destructive" },
+      ]
+    );
   };
 
   return (

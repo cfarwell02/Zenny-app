@@ -14,6 +14,8 @@ import { useContext } from "react";
 import { ThemeContext } from "../context/ThemeContext";
 import { ReceiptContext } from "../context/ReceiptContext";
 import { radius } from "../constants/radius";
+import firestore from "@react-native-firebase/firestore";
+import auth from "@react-native-firebase/auth";
 
 const defaultCategories = ["Food", "Shopping", "Transport", "Bills"];
 
@@ -25,7 +27,7 @@ const ManageCategoriesScreen = () => {
   const { receipts } = useContext(ReceiptContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     const trimmed = newCategory.trim();
     if (!trimmed) return;
 
@@ -38,8 +40,20 @@ const ManageCategoriesScreen = () => {
       return;
     }
 
-    setCustomCategories((prev) => [...prev, trimmed]);
-    setNewCategory("");
+    try {
+      const user = auth().currentUser;
+      await firestore()
+        .collection("users")
+        .doc(user.uid)
+        .collection("categories")
+        .doc(trimmed)
+        .set({ name: trimmed });
+
+      setCustomCategories((prev) => [...prev, trimmed]);
+      setNewCategory("");
+    } catch (err) {
+      console.error("Error saving category:", err);
+    }
   };
 
   const handleDeleteCategory = (category) => {

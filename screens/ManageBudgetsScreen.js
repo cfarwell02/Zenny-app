@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -22,12 +22,15 @@ const ManageBudgetScreen = ({ navigation }) => {
 
   const [open, setOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [items, setItems] = useState(
-    Object.keys(categoryBudgets).map((key) => ({
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    const updatedItems = Object.keys(categoryBudgets).map((key) => ({
       label: key,
       value: key,
-    }))
-  );
+    }));
+    setItems(updatedItems);
+  }, [categoryBudgets]);
 
   const [newAmount, setNewAmount] = useState("");
   const [newThreshold, setNewThreshold] = useState(threshold.toString());
@@ -56,15 +59,9 @@ const ManageBudgetScreen = ({ navigation }) => {
           value={selectedCategory}
           items={items}
           setOpen={setOpen}
-          setValue={(callback) => {
-            const value = callback(selectedCategory);
+          onChangeValue={(value) => {
             setSelectedCategory(value);
-
-            setNewAmount((prevAmount) => {
-              return prevAmount === ""
-                ? categoryBudgets[value]?.toString() || ""
-                : prevAmount;
-            });
+            setNewAmount(categoryBudgets[value]?.toString() || ""); // always update
           }}
           setItems={setItems}
           style={[
