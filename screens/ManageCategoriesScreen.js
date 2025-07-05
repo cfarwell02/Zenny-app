@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { lightTheme, darkTheme } from "../constants/themes";
-import { useContext } from "react";
 import { ThemeContext } from "../context/ThemeContext";
 import { ReceiptContext } from "../context/ReceiptContext";
+import { CategoryContext } from "../context/CategoryContext"; // Add this import
+import { BudgetContext } from "../context/BudgetContext"; // Add this import
 import { radius } from "../constants/radius";
 import firestore from "@react-native-firebase/firestore";
 import auth from "@react-native-firebase/auth";
@@ -20,18 +21,19 @@ import auth from "@react-native-firebase/auth";
 const defaultCategories = ["Food", "Shopping", "Transport", "Bills"];
 
 const ManageCategoriesScreen = () => {
-  const [customCategories, setCustomCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
 
   const { darkMode } = useContext(ThemeContext);
   const { receipts } = useContext(ReceiptContext);
+  const { categories } = useContext(CategoryContext); // Use CategoryContext
+  const { cleanupDeletedCategoryBudgets } = useContext(BudgetContext); // Add this
   const theme = darkMode ? darkTheme : lightTheme;
 
   const handleAddCategory = async () => {
     const trimmed = newCategory.trim();
     if (!trimmed) return;
 
-    const alreadyExists = [...defaultCategories, ...customCategories].some(
+    const alreadyExists = categories.some(
       (c) => c.toLowerCase() === trimmed.toLowerCase()
     );
 
@@ -49,14 +51,15 @@ const ManageCategoriesScreen = () => {
         .doc(trimmed)
         .set({ name: trimmed });
 
-      setCustomCategories((prev) => [...prev, trimmed]);
       setNewCategory("");
+      // No need to update local state - CategoryContext will handle it via Firestore listener
     } catch (err) {
       console.error("Error saving category:", err);
+      Alert.alert("Error", "Failed to save category. Please try again.");
     }
   };
 
-  const handleDeleteCategory = (category) => {
+  const handleDeleteCategory = async (category) => {
     const isCategoryUsed = receipts.some(
       (r) => r.category.toLowerCase() === category.toLowerCase()
     );
@@ -69,11 +72,26 @@ const ManageCategoriesScreen = () => {
       return;
     }
 
-    setCustomCategories((prev) => {
-      const updated = prev.filter((item) => item !== category);
-      console.log("Deleted category:", category);
-      return updated;
-    });
+    try {
+      const user = auth().currentUser;
+
+      // Delete from categories collection
+      await firestore()
+        .collection("users")
+        .doc(user.uid)
+        .collection("categories")
+        .doc(category)
+        .delete();
+
+      // Clean up associated budget
+      await cleanupDeletedCategoryBudgets(category);
+
+      console.log("Deleted category and associated budget:", category);
+      // No need to update local state - CategoryContext will handle it via Firestore listener
+    } catch (err) {
+      console.error("Error deleting category:", err);
+      Alert.alert("Error", "Failed to delete category. Please try again.");
+    }
   };
 
   const renderCategory = ({ item }) => (
@@ -86,8 +104,6 @@ const ManageCategoriesScreen = () => {
       )}
     </View>
   );
-
-  const allCategories = [...defaultCategories, ...customCategories];
 
   return (
     <SafeAreaView
@@ -122,7 +138,7 @@ const ManageCategoriesScreen = () => {
       </TouchableOpacity>
 
       <FlatList
-        data={allCategories}
+        data={categories} // Use categories from CategoryContext
         keyExtractor={(item) => item}
         renderItem={renderCategory}
         style={{ marginTop: 24 }}

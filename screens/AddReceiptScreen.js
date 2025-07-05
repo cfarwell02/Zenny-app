@@ -14,7 +14,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import DropDownPicker from "react-native-dropdown-picker";
+import { Picker } from "@react-native-picker/picker";
 import { ReceiptContext } from "../context/ReceiptContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
@@ -31,9 +31,7 @@ const AddReceiptScreen = () => {
   const [image, setImage] = useState(null);
   const [amount, setAmount] = useState("");
   const [tag, setTag] = useState("");
-  const [open, setOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [categoryItems, setCategoryItems] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
 
   const { categories } = useContext(CategoryContext);
   const { addReceipt } = useContext(ReceiptContext);
@@ -44,11 +42,7 @@ const AddReceiptScreen = () => {
   const { notificationsEnabled } = useContext(NotificationContext);
 
   useEffect(() => {
-    const formatted = categories.map((cat) => ({
-      label: cat,
-      value: cat,
-    }));
-    setCategoryItems(formatted);
+    // No need to format categories for Picker
   }, [categories]);
 
   const handleSaveReceipt = async () => {
@@ -59,10 +53,6 @@ const AddReceiptScreen = () => {
       );
       return;
     }
-
-    console.log("🧾 Saving receipt...");
-    console.log("Selected Category:", selectedCategory);
-    console.log("Category Budgets:", categoryBudgets);
 
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount)) {
@@ -252,33 +242,28 @@ const AddReceiptScreen = () => {
                   }}
                 />
 
-                <View style={styles.dropDownWrapper}>
-                  <DropDownPicker
-                    open={open}
-                    value={selectedCategory}
-                    items={categoryItems}
-                    setOpen={setOpen}
-                    setValue={setSelectedCategory}
-                    setItems={setCategoryItems}
-                    placeholder="Select a category..."
-                    style={{
-                      borderColor: theme.border,
-                      backgroundColor: theme.input,
-                    }}
-                    dropDownContainerStyle={{
-                      borderColor: theme.border,
-                      backgroundColor: theme.input,
-                      zIndex: 1000,
-                      position: "absolute",
-                      top: Platform.OS === "android" ? 50 : 40,
-                    }}
-                    textStyle={{
-                      color: theme.text,
-                    }}
-                    placeholderStyle={{
-                      color: theme.placeholder,
-                    }}
-                  />
+                <View
+                  style={[
+                    styles.pickerContainer,
+                    { backgroundColor: theme.input, borderColor: theme.border },
+                  ]}
+                >
+                  <Picker
+                    selectedValue={selectedCategory}
+                    onValueChange={(itemValue) =>
+                      setSelectedCategory(itemValue)
+                    }
+                    style={[styles.picker, { color: theme.text }]}
+                  >
+                    <Picker.Item label="Select a category..." value="" />
+                    {categories.map((category) => (
+                      <Picker.Item
+                        key={category}
+                        label={category}
+                        value={category}
+                      />
+                    ))}
+                  </Picker>
                 </View>
               </View>
             )}
@@ -360,9 +345,13 @@ const styles = StyleSheet.create({
   DropDownPicker: {
     position: "absolute",
   },
-  dropDownWrapper: {
-    zIndex: 10,
+  pickerContainer: {
+    borderWidth: 1,
+    borderRadius: radius.medium,
     marginBottom: spacing.betweenElements,
+  },
+  picker: {
+    height: 50,
   },
 });
 

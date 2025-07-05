@@ -22,6 +22,14 @@ export const BudgetProvider = ({ children }) => {
     }));
   };
 
+  const cleanupDeletedCategoryBudgets = (categoryToDelete) => {
+    setCategoryBudgets((prev) => {
+      const updated = { ...prev };
+      delete updated[categoryToDelete];
+      return updated;
+    });
+  };
+
   useEffect(() => {
     // Ensure all categories are tracked in categoryBudgets
     setCategoryBudgets((prev) => {
@@ -50,6 +58,7 @@ export const BudgetProvider = ({ children }) => {
         expenses,
         setExpenses,
         addExpense,
+        cleanupDeletedCategoryBudgets,
       }}
     >
       {children}

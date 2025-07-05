@@ -8,6 +8,7 @@ import {
   SafeAreaView,
 } from "react-native";
 import { BudgetContext } from "../context/BudgetContext";
+import { CategoryContext } from "../context/CategoryContext"; // Add this import
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
@@ -15,6 +16,7 @@ import { spacing } from "../constants/spacing";
 
 const MyBudgetScreen = ({ navigation }) => {
   const { categoryBudgets, expenses } = useContext(BudgetContext);
+  const { categories } = useContext(CategoryContext); // Use CategoryContext for categories
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
@@ -22,6 +24,23 @@ const MyBudgetScreen = ({ navigation }) => {
   expenses.forEach((e) => {
     categorySpent[e.category] = (categorySpent[e.category] || 0) + e.amount;
   });
+
+  // Filter out deleted categories - only show categories that exist in CategoryContext
+  const validCategories = categories.filter(
+    (category) =>
+      categoryBudgets.hasOwnProperty(category) ||
+      categorySpent.hasOwnProperty(category)
+  );
+
+  // Also include categories that have budgets or expenses but might not be in the current category list
+  // This prevents data loss if there are expenses/budgets for categories that were deleted
+  const allRelevantCategories = [
+    ...new Set([
+      ...validCategories,
+      ...Object.keys(categoryBudgets).filter((cat) => categories.includes(cat)),
+      ...Object.keys(categorySpent).filter((cat) => categories.includes(cat)),
+    ]),
+  ];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
@@ -32,8 +51,8 @@ const MyBudgetScreen = ({ navigation }) => {
           💰 My Budgets
         </Text>
 
-        {Object.keys(categoryBudgets).map((category) => {
-          const budget = categoryBudgets[category];
+        {allRelevantCategories.map((category) => {
+          const budget = categoryBudgets[category] || 0;
           const spent = categorySpent[category] || 0;
           const remaining = budget - spent;
 

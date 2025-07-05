@@ -6,6 +6,8 @@ import {
   StyleSheet,
   FlatList,
   TextInput,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ReceiptContext } from "../context/ReceiptContext";
@@ -27,6 +29,7 @@ const SavedReceiptsScreen = () => {
   const theme = darkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
+    console.log("Categories from context:", categories);
     const formatted = [
       { label: "All Categories", value: null },
       ...categories.map((cat) => ({
@@ -34,6 +37,7 @@ const SavedReceiptsScreen = () => {
         value: cat,
       })),
     ];
+    console.log("Formatted dropdown items:", formatted);
     setCategoryItems(formatted);
   }, [categories]);
 
@@ -63,82 +67,93 @@ const SavedReceiptsScreen = () => {
   });
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      edges={["top", "left", "right"]}
-    >
-      {receipts.length === 0 ? (
-        <Text style={{ color: theme.text, textAlign: "center" }}>
-          No receipts saved yet.
-        </Text>
-      ) : (
-        <>
-          <TextInput
-            placeholder="Search by tag..."
-            placeholderTextColor={theme.placeholder}
-            value={searchTag}
-            onChangeText={setSearchTag}
-            style={[
-              styles.searchInput,
-              {
-                borderColor: theme.border,
-                color: theme.text,
-                backgroundColor: theme.input,
-              },
-            ]}
-          />
-
-          <View style={{ zIndex: 1000 }}>
-            <DropDownPicker
-              open={categoryOpen}
-              value={selectedCategory}
-              items={categoryItems}
-              setOpen={setCategoryOpen}
-              setValue={setSelectedCategory}
-              setItems={setCategoryItems}
-              placeholder="All Categories"
-              onChangeValue={(value) => {
-                setSelectedCategory(value || null); // 👈 key fix
-              }}
-              style={{
-                borderColor: theme.border,
-                backgroundColor: theme.input,
-                marginBottom: 16,
-              }}
-              dropDownContainerStyle={{
-                borderColor: theme.border,
-                backgroundColor: theme.input,
-              }}
-              textStyle={{
-                color: theme.text,
-              }}
-              placeholderStyle={{
-                color: theme.placeholder,
-              }}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+        edges={["top", "left", "right"]}
+      >
+        {receipts.length === 0 ? (
+          <Text style={{ color: theme.text, textAlign: "center" }}>
+            No receipts saved yet.
+          </Text>
+        ) : (
+          <>
+            <TextInput
+              placeholder="Search by tag..."
+              placeholderTextColor={theme.placeholder}
+              value={searchTag}
+              onChangeText={setSearchTag}
+              style={[
+                styles.searchInput,
+                {
+                  borderColor: theme.border,
+                  color: theme.text,
+                  backgroundColor: theme.input,
+                },
+              ]}
             />
-          </View>
 
-          <FlatList
-            data={filteredReceipts}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={4}
-            renderItem={renderItem}
-            contentContainerStyle={styles.grid}
-            ListEmptyComponent={
-              <Text
-                style={{
-                  color: theme.subtleText,
-                  textAlign: "center",
-                  marginTop: 20,
+            <View style={{ marginBottom: 16 }}>
+              <DropDownPicker
+                key={categories.join(",")}
+                open={categoryOpen}
+                value={selectedCategory}
+                items={categoryItems}
+                setOpen={setCategoryOpen}
+                setValue={setSelectedCategory}
+                setItems={setCategoryItems}
+                placeholder="All Categories"
+                listMode="SCROLLVIEW"
+                scrollViewProps={{
+                  nestedScrollEnabled: true,
+                  keyboardShouldPersistTaps: "handled",
+                  persistentScrollbar: true,
                 }}
-              >
-                No matching receipts found.
-              </Text>
-            }
-          />
-        </>
-      )}
-    </SafeAreaView>
+                onChangeValue={(value) => {
+                  setSelectedCategory(value || null); // 👈 key fix
+                }}
+                style={{
+                  borderColor: theme.border,
+                  backgroundColor: theme.input,
+                }}
+                dropDownContainerStyle={{
+                  borderColor: theme.border,
+                  backgroundColor: theme.input,
+                  maxHeight: 200,
+                  zIndex: 1000, // Try an extremely high zIndex here
+                  elevation: 1, // And a slightly higher elevation
+                }}
+                textStyle={{
+                  color: theme.text,
+                }}
+                placeholderStyle={{
+                  color: theme.placeholder,
+                }}
+              />
+            </View>
+
+            <FlatList
+              data={filteredReceipts}
+              keyExtractor={(item) => item.id.toString()}
+              numColumns={4}
+              renderItem={renderItem}
+              contentContainerStyle={styles.grid}
+              ListEmptyComponent={
+                <Text
+                  style={{
+                    color: theme.subtleText,
+                    textAlign: "center",
+                    marginTop: 20,
+                  }}
+                >
+                  No matching receipts found.
+                </Text>
+              }
+            />
+          </>
+        )}
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 };
 
