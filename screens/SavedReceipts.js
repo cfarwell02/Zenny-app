@@ -8,7 +8,10 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   Keyboard,
+  TouchableOpacity,
+  Modal,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ReceiptContext } from "../context/ReceiptContext";
 import { ThemeContext } from "../context/ThemeContext";
@@ -27,6 +30,10 @@ const SavedReceiptsScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryItems, setCategoryItems] = useState([]);
   const theme = darkMode ? darkTheme : lightTheme;
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+
+  const navigation = useNavigation();
 
   useEffect(() => {
     console.log("Categories from context:", categories);
@@ -42,16 +49,23 @@ const SavedReceiptsScreen = () => {
   }, [categories]);
 
   const renderItem = ({ item }) => (
-    <View style={[styles.card, { backgroundColor: theme.card }]}>
-      <Image source={{ uri: item.image }} style={styles.image} />
-      <Text style={{ color: theme.text }}>${item.amount.toFixed(2)}</Text>
-      <Text style={{ color: theme.subtleText }}>{item.category}</Text>
-      {item.tag ? (
-        <Text style={[styles.tagText, { color: theme.accent }]}>
-          #{item.tag}
-        </Text>
-      ) : null}
-    </View>
+    <TouchableOpacity
+      onPress={() => {
+        setSelectedReceipt(item);
+        setModalVisible(true);
+      }}
+    >
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        <Image source={{ uri: item.image }} style={styles.image} />
+        <Text style={{ color: theme.text }}>${item.amount.toFixed(2)}</Text>
+        <Text style={{ color: theme.subtleText }}>{item.category}</Text>
+        {item.tag ? (
+          <Text style={[styles.tagText, { color: theme.accent }]}>
+            #{item.tag}
+          </Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
   );
 
   const filteredReceipts = receipts.filter((r) => {
@@ -152,6 +166,69 @@ const SavedReceiptsScreen = () => {
             />
           </>
         )}
+        <Modal
+          visible={modalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
+              {/* Close Button */}
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeText}>×</Text>
+              </TouchableOpacity>
+
+              {selectedReceipt && (
+                <>
+                  <Image
+                    source={{ uri: selectedReceipt.image }}
+                    style={styles.modalImage}
+                  />
+                  <Text style={{ color: theme.text }}>
+                    Amount: ${selectedReceipt.amount}
+                  </Text>
+                  <Text style={{ color: theme.text }}>
+                    Category: {selectedReceipt.category}
+                  </Text>
+                  <Text style={{ color: theme.accent }}>
+                    Tag: {selectedReceipt.tag || "None"}
+                  </Text>
+
+                  <View style={styles.modalButtonRow}>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => {
+                        setModalVisible(false);
+                        navigation.navigate("Add Receipt", {
+                          receiptToEdit: selectedReceipt,
+                        });
+                      }}
+                    >
+                      <Text style={styles.buttonText}>Edit</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={async () => {
+                        await firestore()
+                          .collection("receipts")
+                          .doc(selectedReceipt.id)
+                          .delete();
+                        setModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.buttonText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );
@@ -190,6 +267,61 @@ const styles = StyleSheet.create({
     padding: 8,
     paddingHorizontal: 12,
     marginBottom: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalCard: {
+    width: "85%",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+  },
+  modalImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  modalButtonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 16,
+  },
+  editButton: {
+    backgroundColor: "#4CAF50",
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  deleteButton: {
+    backgroundColor: "#FF3B30",
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+  },
+  buttonText: {
+    color: "#fff",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 20,
+    zIndex: 1,
+    padding: 4,
+  },
+
+  closeText: {
+    fontSize: 40,
+    color: "#FF0000",
   },
 });
 

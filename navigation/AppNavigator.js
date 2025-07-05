@@ -40,14 +40,8 @@ const AppNavigator = () => {
   };
 
   if (loading) {
-    console.log("⏳ Loading auth state...");
     return null; // Optionally show a splash screen
   }
-
-  console.log(
-    "🚀 Rendering navigator with user:",
-    user ? "authenticated" : "not authenticated"
-  );
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
