@@ -48,15 +48,32 @@ const MyBudgetScreen = ({ navigation }) => {
               <Text style={[styles.category, { color: theme.text }]}>
                 {category}
               </Text>
-              <Text style={[styles.detail, { color: theme.text }]}>
-                Budget: ${(parseFloat(budget) || 0).toFixed(2)}
-              </Text>
-              <Text style={[styles.detail, { color: theme.text }]}>
-                Spent: ${(spent ?? 0).toFixed(2)}
-              </Text>
-              <Text style={[styles.detail, { color: theme.text }]}>
-                Remaining: ${(remaining ?? 0).toFixed(2)}
-              </Text>
+
+              {budget === 0 ? (
+                <Text
+                  style={[
+                    styles.detail,
+                    {
+                      color: theme.subtleText || theme.text,
+                      fontStyle: "italic",
+                    },
+                  ]}
+                >
+                  No budget set for "{category}" yet.
+                </Text>
+              ) : (
+                <>
+                  <Text style={[styles.detail, { color: theme.text }]}>
+                    Budget: ${(parseFloat(budget) || 0).toFixed(2)}
+                  </Text>
+                  <Text style={[styles.detail, { color: theme.text }]}>
+                    Spent: ${(spent ?? 0).toFixed(2)}
+                  </Text>
+                  <Text style={[styles.detail, { color: theme.text }]}>
+                    Remaining: ${(remaining ?? 0).toFixed(2)}
+                  </Text>
+                </>
+              )}
             </View>
           );
         })}
