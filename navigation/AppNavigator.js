@@ -21,6 +21,10 @@ const AppNavigator = () => {
   // Firebase Auth listener
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
+      console.log(
+        "🔥 Auth state changed:",
+        firebaseUser ? "User logged in" : "User logged out"
+      );
       setUser(firebaseUser);
       setLoading(false);
     });
@@ -28,7 +32,22 @@ const AppNavigator = () => {
     return unsubscribe;
   }, []);
 
-  if (loading) return null; // Optionally show a splash screen
+  // Handler for successful authentication
+  const handleAuthSuccess = () => {
+    console.log("✅ Auth success handler called");
+    // The auth state change will be handled by the useEffect above
+    // No need to do anything here as the user state will update automatically
+  };
+
+  if (loading) {
+    console.log("⏳ Loading auth state...");
+    return null; // Optionally show a splash screen
+  }
+
+  console.log(
+    "🚀 Rendering navigator with user:",
+    user ? "authenticated" : "not authenticated"
+  );
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -47,7 +66,11 @@ const AppNavigator = () => {
           />
         </>
       ) : (
-        <Stack.Screen name="Auth" component={AuthScreen} />
+        <Stack.Screen name="Auth">
+          {(props) => (
+            <AuthScreen {...props} onAuthSuccess={handleAuthSuccess} />
+          )}
+        </Stack.Screen>
       )}
     </Stack.Navigator>
   );

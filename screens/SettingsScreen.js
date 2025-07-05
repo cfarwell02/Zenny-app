@@ -85,7 +85,7 @@ const SettingsScreen = () => {
     try {
       await auth().signOut();
       Alert.alert("Signed Out", "You have been logged out.");
-      navigation.replace("Auth");
+      // Removed navigation.replace("Auth") - auth state listener handles navigation
     } catch (error) {
       Alert.alert("Sign Out Failed", error.message);
     }
@@ -101,7 +101,7 @@ const SettingsScreen = () => {
     try {
       await user.delete(); // Only works if user recently signed in
       Alert.alert("Account deleted", "Your account has been removed.");
-      navigation.replace("Auth");
+      // Removed navigation.replace("Auth") - auth state listener handles navigation
     } catch (error) {
       if (error.code === "auth/requires-recent-login") {
         Alert.alert(

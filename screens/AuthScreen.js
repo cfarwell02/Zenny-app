@@ -17,25 +17,27 @@ const AuthScreen = ({ onAuthSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSigningUp, setIsSigningUp] = useState(false);
-  const { darkMode } = useContext(ThemeContext);
-  const theme = darkMode ? darkTheme : lightTheme;
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Make theme optional to avoid potential context issues
+  const themeContext = useContext(ThemeContext);
+  const theme = themeContext?.darkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
     GoogleSignin.configure({
       webClientId:
-        "813553055334-haihet8pud9hmb8dmbrrhn3858vum4sd.apps.googleusercontent.com", // Replace with Firebase Web client ID
-      androidClientId:
-        "813553055334-sfkl8a3fh1k3lbodp2raqbvl8ut83qg7.apps.googleusercontent.com", // Optional: Only needed for Android device sign-in
+        "813553055334-haihet8pud9hmb8dmbrrhn3858vum4sd.apps.googleusercontent.com", // Web client ID from google-services.json
+      // Remove androidClientId - it's automatically detected from google-services.json
     });
 
     const unsubscribe = auth().onAuthStateChanged((user) => {
       if (user) {
-        onAuthSuccess();
+        onAuthSuccess?.();
       }
     });
 
     return unsubscribe;
-  }, []);
+  }, [onAuthSuccess]);
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -43,6 +45,7 @@ const AuthScreen = ({ onAuthSuccess }) => {
       return;
     }
 
+    setIsLoading(true);
     try {
       let userCredential;
       if (isSigningUp) {
@@ -56,61 +59,128 @@ const AuthScreen = ({ onAuthSuccess }) => {
           password
         );
       }
-
       Alert.alert("Success", isSigningUp ? "Account created!" : "Logged in!");
-      onAuthSuccess(); // move to Home screen
     } catch (err) {
-      console.error("❌ Firebase Auth Error:", err.message);
       Alert.alert("Auth Error", err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signInWithGoogle = async () => {
+    setIsLoading(true);
     try {
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
-      const { idToken } = await GoogleSignin.signIn();
-      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+
+      const userInfo = await GoogleSignin.signIn();
+
+      // Check if we got a valid result
+      if (!userInfo || !userInfo.data || !userInfo.data.idToken) {
+        throw new Error("Failed to get ID token from Google Sign-In");
+      }
+
+      const googleCredential = auth.GoogleAuthProvider.credential(
+        userInfo.data.idToken
+      );
+
       await auth().signInWithCredential(googleCredential);
+
       Alert.alert("Success", "Signed in with Google!");
     } catch (error) {
-      console.error("❌ Google Sign-In Error:", error.message);
-      Alert.alert("Google Sign-In Failed", error.message);
+      console.error("❌ Google Sign-In Error:", error);
+
+      // Handle specific Google Sign-In errors
+      if (error.code === "SIGN_IN_CANCELLED") {
+        Alert.alert("Sign-In Cancelled", "You cancelled the Google Sign-In");
+      } else if (error.code === "IN_PROGRESS") {
+        Alert.alert(
+          "Sign-In in Progress",
+          "Please wait for the current sign-in to complete"
+        );
+      } else if (error.code === "PLAY_SERVICES_NOT_AVAILABLE") {
+        Alert.alert(
+          "Play Services Required",
+          "Please update Google Play Services"
+        );
+      } else {
+        Alert.alert(
+          "Google Sign-In Failed",
+          error.message || "An unknown error occurred"
+        );
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView>
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-        <View style={{ padding: 20 }}>
-          {/* Keep your email/password logic if you still plan to support it */}
+    <KeyboardAvoidingView style={{ flex: 1 }}>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: theme?.background || "#ffffff" }}
+      >
+        <View style={{ padding: 20, flex: 1, justifyContent: "center" }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "bold",
+              marginBottom: 20,
+              color: theme?.text || "#000000",
+            }}
+          >
+            Welcome to Zenny
+          </Text>
+
+          {/* Email/Password Authentication (uncomment if needed) */}
           {/* 
           <TextInput
             value={email}
             onChangeText={setEmail}
             placeholder="Email"
-            style={{ marginBottom: 10 }}
+            placeholderTextColor={theme.textSecondary}
+            style={{ 
+              marginBottom: 10, 
+              padding: 10, 
+              borderWidth: 1, 
+              borderColor: theme.border,
+              backgroundColor: theme.surface,
+              color: theme.text
+            }}
           />
           <TextInput
             value={password}
             onChangeText={setPassword}
             placeholder="Password"
+            placeholderTextColor={theme.textSecondary}
             secureTextEntry
-            style={{ marginBottom: 10 }}
+            style={{ 
+              marginBottom: 10, 
+              padding: 10, 
+              borderWidth: 1, 
+              borderColor: theme.border,
+              backgroundColor: theme.surface,
+              color: theme.text
+            }}
           />
           <Button
             title={isSigningUp ? "Sign Up" : "Log In"}
             onPress={handleAuth}
+            disabled={isLoading}
           />
           <Button
             title={isSigningUp ? "Have an account? Log in" : "Need an account? Sign up"}
             onPress={() => setIsSigningUp(!isSigningUp)}
+            disabled={isLoading}
           /> 
           */}
 
           <View style={{ marginTop: 20 }}>
-            <Button title="Sign In with Google" onPress={signInWithGoogle} />
+            <Button
+              title={isLoading ? "Signing In..." : "Sign In with Google"}
+              onPress={signInWithGoogle}
+              disabled={isLoading}
+            />
           </View>
         </View>
       </SafeAreaView>
