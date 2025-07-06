@@ -29,8 +29,10 @@ const HomeScreen = ({ navigation }) => {
           {[
             { label: "🧾 View Receipts", screen: "Saved Receipts" },
             { label: "➕ Add Receipt", screen: "Add Receipt" },
-            { label: "💰 My Budget", screen: "My Budget" },
-            { label: "📊 View Stats", screen: "Statistics" },
+            { label: "💰 Budgets", screen: "My Budget" },
+            { label: "📊 Stats", screen: "Statistics" },
+            { label: "💼 Income Tracker", screen: "Income" }, // New
+            { label: "🎯 Savings Goal", screen: "SavingsGoal" },
             { label: "⚙️ Settings", screen: "Settings" },
           ].map(({ label, screen }) => (
             <TouchableOpacity
