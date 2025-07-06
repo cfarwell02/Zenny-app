@@ -32,9 +32,9 @@ export default function App() {
   if (loading) return null; // Optional: replace with splash screen or loading spinner
 
   return (
-    <NotificationProvider>
-      <CategoryProvider>
-        <ThemeProvider>
+    <ThemeProvider>
+      <NotificationProvider>
+        <CategoryProvider>
           <BudgetProvider>
             <ReceiptProvider>
               <NavigationContainer>
@@ -42,8 +42,8 @@ export default function App() {
               </NavigationContainer>
             </ReceiptProvider>
           </BudgetProvider>
-        </ThemeProvider>
-      </CategoryProvider>
-    </NotificationProvider>
+        </CategoryProvider>
+      </NotificationProvider>
+    </ThemeProvider>
   );
 }
