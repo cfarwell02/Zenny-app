@@ -10,10 +10,12 @@ import {
   Keyboard,
   TouchableOpacity,
   Modal,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ReceiptContext } from "../context/ReceiptContext";
+import { BudgetContext } from "../context/BudgetContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
@@ -22,9 +24,11 @@ import DropDownPicker from "react-native-dropdown-picker";
 import { CategoryContext } from "../context/CategoryContext";
 
 const SavedReceiptsScreen = () => {
-  const { receipts } = useContext(ReceiptContext);
+  const { receipts, deleteReceipt } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
   const { categories } = useContext(CategoryContext);
+  const { categoryBudgets, updateCategoryBudget, removeExpense, expenses } =
+    useContext(BudgetContext);
   const [searchTag, setSearchTag] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -34,6 +38,9 @@ const SavedReceiptsScreen = () => {
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   const navigation = useNavigation();
+  const isValidUri = (uri) =>
+    (typeof uri === "string" && uri.startsWith("http")) ||
+    uri.startsWith("file");
 
   useEffect(() => {
     console.log("Categories from context:", categories);
@@ -48,15 +55,39 @@ const SavedReceiptsScreen = () => {
     setCategoryItems(formatted);
   }, [categories]);
 
+  useEffect(() => {
+    console.log("📊 SavedReceiptsScreen - Current state:");
+    console.log("📊 Receipts:", receipts);
+    console.log("📊 CategoryBudgets:", categoryBudgets);
+    console.log("📊 Expenses:", expenses);
+  }, [receipts, categoryBudgets, expenses]);
+
   const renderItem = ({ item }) => (
     <TouchableOpacity
       onPress={() => {
+        console.log("🔍 Receipt item:", item);
+        console.log("🔍 Receipt ID:", item.id, "Type:", typeof item.id);
         setSelectedReceipt(item);
         setModalVisible(true);
       }}
     >
       <View style={[styles.card, { backgroundColor: theme.card }]}>
-        <Image source={{ uri: item.image }} style={styles.image} />
+        {item.image && isValidUri(item.image) ? (
+          <Image source={{ uri: item.image }} style={styles.image} />
+        ) : (
+          <View
+            style={[
+              styles.image,
+              {
+                backgroundColor: "#ccc",
+                justifyContent: "center",
+                alignItems: "center",
+              },
+            ]}
+          >
+            <Text style={{ color: "black" }}>No Image</Text>
+          </View>
+        )}
         <Text style={{ color: theme.text }}>${item.amount.toFixed(2)}</Text>
         <Text style={{ color: theme.subtleText }}>{item.category}</Text>
         {item.tag ? (
@@ -80,6 +111,36 @@ const SavedReceiptsScreen = () => {
     return tagMatch && categoryMatch;
   });
 
+  const handleDeleteReceipt = async (id) => {
+    console.log("🧨 Trying to delete receipt with ID:", id);
+    console.log("🧨 ID type:", typeof id);
+    console.log("🧨 Selected receipt:", selectedReceipt);
+
+    if (!id) {
+      console.error("❌ No ID provided for deletion");
+      Alert.alert("Error", "Cannot delete receipt: No ID found");
+      return;
+    }
+
+    try {
+      if (
+        selectedReceipt &&
+        selectedReceipt.amount &&
+        selectedReceipt.category
+      ) {
+        removeExpense(selectedReceipt.id);
+        console.log(`✅ Removed expense from stats`);
+      }
+
+      // Delete the receipt
+      await deleteReceipt(id);
+      console.log("✅ Successfully deleted receipt");
+      setModalVisible(false);
+    } catch (error) {
+      console.error("❌ Error deleting receipt:", error);
+      Alert.alert("Error", "Failed to delete receipt. Please try again.");
+    }
+  };
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView
@@ -184,10 +245,16 @@ const SavedReceiptsScreen = () => {
 
               {selectedReceipt && (
                 <>
-                  <Image
-                    source={{ uri: selectedReceipt.image }}
-                    style={styles.modalImage}
-                  />
+                  {selectedReceipt.image ? (
+                    <Image
+                      source={{ uri: selectedReceipt.image }}
+                      style={styles.modalImage}
+                    />
+                  ) : (
+                    <Text style={{ color: "red", marginBottom: 12 }}>
+                      Image not available
+                    </Text>
+                  )}
                   <Text style={{ color: theme.text }}>
                     Amount: ${selectedReceipt.amount}
                   </Text>
@@ -213,12 +280,20 @@ const SavedReceiptsScreen = () => {
 
                     <TouchableOpacity
                       style={styles.deleteButton}
-                      onPress={async () => {
-                        await firestore()
-                          .collection("receipts")
-                          .doc(selectedReceipt.id)
-                          .delete();
-                        setModalVisible(false);
+                      onPress={() => {
+                        Alert.alert(
+                          "Delete Receipt",
+                          "Are you sure you want to delete this receipt?",
+                          [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Delete",
+                              style: "destructive",
+                              onPress: () =>
+                                handleDeleteReceipt(selectedReceipt.id),
+                            },
+                          ]
+                        );
                       }}
                     >
                       <Text style={styles.buttonText}>Delete</Text>

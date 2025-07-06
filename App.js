@@ -35,13 +35,13 @@ export default function App() {
     <NotificationProvider>
       <CategoryProvider>
         <ThemeProvider>
-          <ReceiptProvider>
-            <BudgetProvider>
+          <BudgetProvider>
+            <ReceiptProvider>
               <NavigationContainer>
                 <AppNavigator />
               </NavigationContainer>
-            </BudgetProvider>
-          </ReceiptProvider>
+            </ReceiptProvider>
+          </BudgetProvider>
         </ThemeProvider>
       </CategoryProvider>
     </NotificationProvider>

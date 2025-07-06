@@ -12,6 +12,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
+  SafeAreaView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
@@ -36,8 +37,7 @@ const AddReceiptScreen = () => {
   const { categories } = useContext(CategoryContext);
   const { addReceipt } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
-  const { categoryBudgets, threshold, expenses, addExpense } =
-    useContext(BudgetContext);
+  const { categoryBudgets, threshold, expenses } = useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
   const { notificationsEnabled } = useContext(NotificationContext);
 
@@ -77,7 +77,6 @@ const AddReceiptScreen = () => {
     };
 
     // Save the new expense and receipt
-    addExpense(expense);
     addReceipt(newReceipt);
 
     try {

@@ -15,6 +15,12 @@ export const BudgetProvider = ({ children }) => {
     setExpenses((prev) => [...prev, expense]);
   };
 
+  const removeExpense = (expenseId) => {
+    setExpenses((prevExpenses) =>
+      prevExpenses.filter((expense) => expense.id !== expenseId)
+    );
+  };
+
   const updateCategoryBudget = (category, amount) => {
     setCategoryBudgets((prev) => ({
       ...prev,
@@ -59,6 +65,7 @@ export const BudgetProvider = ({ children }) => {
         setExpenses,
         addExpense,
         cleanupDeletedCategoryBudgets,
+        removeExpense,
       }}
     >
       {children}
