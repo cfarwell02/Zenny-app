@@ -5,10 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { BudgetContext } from "../context/BudgetContext";
-import { CategoryContext } from "../context/CategoryContext"; // Add this import
+import { CategoryContext } from "../context/CategoryContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
@@ -16,7 +17,7 @@ import { spacing } from "../constants/spacing";
 
 const MyBudgetScreen = ({ navigation }) => {
   const { categoryBudgets, expenses } = useContext(BudgetContext);
-  const { categories } = useContext(CategoryContext); // Use CategoryContext for categories
+  const { categories } = useContext(CategoryContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
@@ -25,18 +26,13 @@ const MyBudgetScreen = ({ navigation }) => {
     categorySpent[e.category] = (categorySpent[e.category] || 0) + e.amount;
   });
 
-  // Filter out deleted categories - only show categories that exist in CategoryContext
-  const validCategories = categories.filter(
-    (category) =>
-      categoryBudgets.hasOwnProperty(category) ||
-      categorySpent.hasOwnProperty(category)
-  );
-
-  // Also include categories that have budgets or expenses but might not be in the current category list
-  // This prevents data loss if there are expenses/budgets for categories that were deleted
   const allRelevantCategories = [
     ...new Set([
-      ...validCategories,
+      ...categories.filter(
+        (cat) =>
+          categoryBudgets.hasOwnProperty(cat) ||
+          categorySpent.hasOwnProperty(cat)
+      ),
       ...Object.keys(categoryBudgets).filter((cat) => categories.includes(cat)),
       ...Object.keys(categorySpent).filter((cat) => categories.includes(cat)),
     ]),
@@ -52,62 +48,73 @@ const MyBudgetScreen = ({ navigation }) => {
           { backgroundColor: theme.background },
         ]}
       >
-        <View style={styles.centerWrapper}>
+        <View style={styles.inner}>
           <Text style={[styles.header, { color: theme.text }]}>
             💰 My Budgets
           </Text>
 
-          {allRelevantCategories.map((category) => {
-            const budget = categoryBudgets[category] || 0;
-            const spent = categorySpent[category] || 0;
-            const remaining = budget - spent;
+          {allRelevantCategories.length === 0 ? (
+            <Text
+              style={{
+                color: theme.subtleText || theme.text,
+                fontStyle: "italic",
+                textAlign: "center",
+              }}
+            >
+              No budgets or expenses yet. Start by adding a receipt or setting a
+              budget.
+            </Text>
+          ) : (
+            allRelevantCategories.map((category) => {
+              const budget = categoryBudgets[category] || 0;
+              const spent = categorySpent[category] || 0;
+              const remaining = budget - spent;
 
-            return (
-              <View
-                key={category}
-                style={[
-                  styles.card,
-                  { backgroundColor: theme.card, borderColor: theme.border },
-                ]}
-              >
-                <Text style={[styles.category, { color: theme.text }]}>
-                  {category}
-                </Text>
+              return (
+                <View
+                  key={category}
+                  style={[
+                    styles.card,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                      shadowColor: theme.text,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.category, { color: theme.text }]}>
+                    {category}
+                  </Text>
 
-                {budget === 0 ? (
-                  <Text
-                    style={[
-                      styles.detail,
-                      {
+                  {budget === 0 ? (
+                    <Text
+                      style={{
                         color: theme.subtleText || theme.text,
                         fontStyle: "italic",
-                      },
-                    ]}
-                  >
-                    No budget set for "{category}" yet.
-                  </Text>
-                ) : (
-                  <>
-                    <Text style={[styles.detail, { color: theme.text }]}>
-                      Budget: ${(parseFloat(budget) || 0).toFixed(2)}
+                      }}
+                    >
+                      No budget set for "{category}" yet.
                     </Text>
-                    <Text style={[styles.detail, { color: theme.text }]}>
-                      Spent: ${(spent ?? 0).toFixed(2)}
-                    </Text>
-                    <Text style={[styles.detail, { color: theme.text }]}>
-                      Remaining: ${(remaining ?? 0).toFixed(2)}
-                    </Text>
-                  </>
-                )}
-              </View>
-            );
-          })}
+                  ) : (
+                    <>
+                      <Text style={[styles.detail, { color: theme.text }]}>
+                        Budget: ${budget.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.detail, { color: theme.text }]}>
+                        Spent: ${spent.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.detail, { color: theme.text }]}>
+                        Remaining: ${remaining.toFixed(2)}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              );
+            })
+          )}
 
           <TouchableOpacity
-            style={[
-              styles.manageButton,
-              { backgroundColor: theme.primary, marginBottom: 16 },
-            ]}
+            style={[styles.manageButton, { backgroundColor: theme.primary }]}
             onPress={() => navigation.navigate("Manage Categories")}
           >
             <Text style={[styles.manageText, { color: theme.buttonText }]}>
@@ -132,44 +139,55 @@ const MyBudgetScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: spacing.screen,
+    paddingHorizontal: spacing.screen,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
+  },
+  inner: {
+    paddingTop: 24,
   },
   header: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 16,
-    marginTop: 16,
+    marginBottom: 24,
+    textAlign: "center",
   },
   card: {
-    padding: 16,
     borderWidth: 1,
-    borderRadius: radius.medium,
+    borderRadius: radius.large,
+    padding: 16,
     marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   category: {
     fontSize: 18,
     fontWeight: "600",
-    marginBottom: 6,
+    marginBottom: 8,
   },
   detail: {
     fontSize: 16,
+    marginBottom: 2,
   },
   manageButton: {
-    padding: 14,
+    paddingVertical: 14,
     borderRadius: radius.medium,
     alignItems: "center",
+    marginTop: 12,
   },
   manageText: {
     fontSize: 16,
     fontWeight: "bold",
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-
-  centerWrapper: {
-    flex: 1,
-    justifyContent: "center",
   },
 });
 

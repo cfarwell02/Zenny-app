@@ -5,9 +5,9 @@ import {
   Button,
   Text,
   Alert,
-  SafeAreaView,
   KeyboardAvoidingView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import auth from "@react-native-firebase/auth";
@@ -120,7 +120,7 @@ const AuthScreen = ({ onAuthSuccess }) => {
       <SafeAreaView
         style={{ flex: 1, backgroundColor: theme?.background || "#ffffff" }}
       >
-        <View style={{ padding: 20, flex: 1, justifyContent: "center" }}>
+        <View style={{ padding: 20, flex: 1 }}>
           <Text
             style={{
               fontSize: 24,

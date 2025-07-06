@@ -1,5 +1,11 @@
 import React, { useContext } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Button } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+} from "react-native";
 import { ThemeContext } from "../context/ThemeContext";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
@@ -14,58 +20,37 @@ const HomeScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <View style={styles.header}>
+      <View style={[styles.content, { backgroundColor: theme.background }]}>
         <Text style={[styles.title, { color: theme.text }]}>
-          Welcome to Zenny!
+          Welcome to <Text style={styles.zenny}>Zenny</Text>!
         </Text>
-      </View>
 
-      {/* Centered Button Group */}
-      <View style={styles.buttonGroup}>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.navigate("Saved Receipts")}
-        >
-          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
-            🧾 View Receipts
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.navigate("Add Receipt")}
-        >
-          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
-            ➕ Add Receipt
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.navigate("My Budget")}
-        >
-          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
-            💰 My Budget
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.navigate("Statistics")}
-        >
-          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
-            📊 View Stats
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.navigate("Settings")}
-        >
-          <Text style={[styles.buttonText, { color: theme.buttonText }]}>
-            ⚙️ Settings
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.buttonGroup}>
+          {[
+            { label: "🧾 View Receipts", screen: "Saved Receipts" },
+            { label: "➕ Add Receipt", screen: "Add Receipt" },
+            { label: "💰 My Budget", screen: "My Budget" },
+            { label: "📊 View Stats", screen: "Statistics" },
+            { label: "⚙️ Settings", screen: "Settings" },
+          ].map(({ label, screen }) => (
+            <TouchableOpacity
+              key={screen}
+              style={[
+                styles.button,
+                {
+                  backgroundColor: theme.primary,
+                  shadowColor: theme.text,
+                },
+              ]}
+              onPress={() => navigation.navigate(screen)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.buttonText, { color: theme.buttonText }]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -74,32 +59,47 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
   },
-  header: {
-    alignItems: "center",
-    paddingTop: 100,
-    marginBottom: 0,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "600",
-  },
-  buttonGroup: {
+  content: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: spacing.screen,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 40,
+    textAlign: "center",
+  },
+  zenny: {
+    color: "#4CAF50", // Accent for app name
+  },
+  buttonGroup: {
+    width: "100%",
+    alignItems: "center",
   },
   button: {
-    width: 200,
+    width: "90%",
     paddingVertical: 14,
-    borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 20, // Increased spacing between buttons
+    borderRadius: radius.large,
     alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   buttonText: {
     fontSize: 18,
-    fontWeight: "500",
+    fontWeight: "600",
   },
 });
 

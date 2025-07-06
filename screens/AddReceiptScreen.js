@@ -12,7 +12,6 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
-  SafeAreaView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
@@ -244,7 +243,10 @@ const AddReceiptScreen = () => {
                 <View
                   style={[
                     styles.pickerContainer,
-                    { backgroundColor: theme.input, borderColor: theme.border },
+                    {
+                      backgroundColor: theme.input,
+                      borderColor: theme.border,
+                    },
                   ]}
                 >
                   <Picker

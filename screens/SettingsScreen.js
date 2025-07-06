@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Alert,
   Platform,
-  Button,
+  ScrollView,
 } from "react-native";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
@@ -15,17 +15,18 @@ import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 import * as Notifications from "expo-notifications";
 import { NotificationContext } from "../context/NotificationContext";
-import { useNavigation } from "@react-navigation/native";
 import auth from "@react-native-firebase/auth";
 
 const SettingsScreen = () => {
   const { darkMode, toggleDarkMode } = useContext(ThemeContext);
-  const theme = darkMode ? darkTheme : lightTheme;
   const { notificationsEnabled, setNotificationsEnabled } =
     useContext(NotificationContext);
-  const navigation = useNavigation();
 
-  const requestNotificationPermission = async () => {
+  const theme = darkMode ? darkTheme : lightTheme;
+
+  const handleToggleNotifications = async (value) => {
+    if (Platform.OS === "web") return;
+
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== "granted") {
       const { status: newStatus } =
@@ -33,30 +34,9 @@ const SettingsScreen = () => {
       if (newStatus !== "granted") {
         Alert.alert(
           "Permission Denied",
-          "To receive budget alerts, enable notifications in your device settings."
+          "Enable notifications in settings to receive reminders."
         );
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const handleToggleNotifications = async (value) => {
-    if (Platform.OS === "web") return; // Skip on web
-
-    if (value) {
-      const { status } = await Notifications.getPermissionsAsync();
-      if (status !== "granted") {
-        const { status: newStatus } =
-          await Notifications.requestPermissionsAsync();
-
-        if (newStatus !== "granted") {
-          Alert.alert(
-            "Notifications Denied",
-            "Please allow notifications in settings."
-          );
-          return;
-        }
+        return;
       }
     }
 
@@ -85,7 +65,6 @@ const SettingsScreen = () => {
     try {
       await auth().signOut();
       Alert.alert("Signed Out", "You have been logged out.");
-      // Removed navigation.replace("Auth") - auth state listener handles navigation
     } catch (error) {
       Alert.alert("Sign Out Failed", error.message);
     }
@@ -99,9 +78,8 @@ const SettingsScreen = () => {
     }
 
     try {
-      await user.delete(); // Only works if user recently signed in
+      await user.delete();
       Alert.alert("Account deleted", "Your account has been removed.");
-      // Removed navigation.replace("Auth") - auth state listener handles navigation
     } catch (error) {
       if (error.code === "auth/requires-recent-login") {
         Alert.alert(
@@ -126,57 +104,105 @@ const SettingsScreen = () => {
   };
 
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>✅ Settings works</Text>
-      <View style={styles.settingRow}>
-        <Text style={[styles.label, { color: theme.text }]}>Dark Mode</Text>
-        <Switch value={darkMode} onValueChange={toggleDarkMode} />
-      </View>
-      <TouchableOpacity
-        style={[styles.clearButton, { backgroundColor: theme.danger }]}
-        onPress={() => alert("This would clear receipts")}
-      >
-        <Text style={{ color: theme.buttonText }}>🗑️ Clear All Receipts</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={handleSignOut} style={{ marginTop: 20 }}>
-        <Text style={{ color: "red", fontSize: 16 }}>Log Out</Text>
-      </TouchableOpacity>
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { backgroundColor: theme.background },
+      ]}
+    >
+      <Text style={[styles.header, { color: theme.text }]}>Settings</Text>
 
-      <TouchableOpacity
-        onPress={confirmDeleteAccount}
-        style={{ marginTop: 10 }}
-      >
-        <Text style={{ color: "red", fontSize: 16 }}>Delete Account</Text>
-      </TouchableOpacity>
-    </View>
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.subtleText }]}>
+          Preferences
+        </Text>
+
+        <View style={styles.row}>
+          <Text style={[styles.label, { color: theme.text }]}>Dark Mode</Text>
+          <Switch value={darkMode} onValueChange={toggleDarkMode} />
+        </View>
+
+        <View style={styles.row}>
+          <Text style={[styles.label, { color: theme.text }]}>
+            Notifications
+          </Text>
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={handleToggleNotifications}
+          />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.subtleText }]}>
+          Account
+        </Text>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.danger }]}
+          onPress={handleClearData}
+        >
+          <Text style={styles.buttonText}>🗑️ Clear All Receipts</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: "#999" }]}
+          onPress={handleSignOut}
+        >
+          <Text style={styles.buttonText}>🚪 Log Out</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: "#cc0000" }]}
+          onPress={confirmDeleteAccount}
+        >
+          <Text style={styles.buttonText}>⚠️ Delete Account</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: spacing.screen,
+    flexGrow: 1,
   },
   header: {
-    fontSize: 24,
-    marginBottom: spacing.betweenElements,
+    fontSize: 26,
+    fontWeight: "bold",
+    marginBottom: 24,
     textAlign: "center",
-    marginTop: 50,
   },
-  settingRow: {
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    marginBottom: 12,
+    fontWeight: "500",
+  },
+  row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacing.betweenElements,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
   },
-  clearButton: {
-    marginTop: 40,
-    padding: spacing.inputPadding,
+  label: {
+    fontSize: 16,
+  },
+  button: {
+    marginTop: 16,
+    paddingVertical: 14,
     borderRadius: radius.medium,
+    alignItems: "center",
   },
-  version: {
-    marginTop: 60,
-    textAlign: "center",
+  buttonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });
 

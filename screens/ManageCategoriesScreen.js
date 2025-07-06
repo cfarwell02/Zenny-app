@@ -12,8 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { ThemeContext } from "../context/ThemeContext";
 import { ReceiptContext } from "../context/ReceiptContext";
-import { CategoryContext } from "../context/CategoryContext"; // Add this import
-import { BudgetContext } from "../context/BudgetContext"; // Add this import
+import { CategoryContext } from "../context/CategoryContext";
+import { BudgetContext } from "../context/BudgetContext";
 import { radius } from "../constants/radius";
 import firestore from "@react-native-firebase/firestore";
 import auth from "@react-native-firebase/auth";
@@ -25,8 +25,8 @@ const ManageCategoriesScreen = () => {
 
   const { darkMode } = useContext(ThemeContext);
   const { receipts } = useContext(ReceiptContext);
-  const { categories } = useContext(CategoryContext); // Use CategoryContext
-  const { cleanupDeletedCategoryBudgets } = useContext(BudgetContext); // Add this
+  const { categories } = useContext(CategoryContext);
+  const { cleanupDeletedCategoryBudgets } = useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
   const handleAddCategory = async () => {
@@ -52,7 +52,6 @@ const ManageCategoriesScreen = () => {
         .set({ name: trimmed });
 
       setNewCategory("");
-      // No need to update local state - CategoryContext will handle it via Firestore listener
     } catch (err) {
       console.error("Error saving category:", err);
       Alert.alert("Error", "Failed to save category. Please try again.");
@@ -75,7 +74,6 @@ const ManageCategoriesScreen = () => {
     try {
       const user = auth().currentUser;
 
-      // Delete from categories collection
       await firestore()
         .collection("users")
         .doc(user.uid)
@@ -83,11 +81,7 @@ const ManageCategoriesScreen = () => {
         .doc(category)
         .delete();
 
-      // Clean up associated budget
       await cleanupDeletedCategoryBudgets(category);
-
-      console.log("Deleted category and associated budget:", category);
-      // No need to update local state - CategoryContext will handle it via Firestore listener
     } catch (err) {
       console.error("Error deleting category:", err);
       Alert.alert("Error", "Failed to delete category. Please try again.");
@@ -96,10 +90,10 @@ const ManageCategoriesScreen = () => {
 
   const renderCategory = ({ item }) => (
     <View style={[styles.categoryRow, { backgroundColor: theme.card }]}>
-      <Text style={{ color: theme.text }}>{item}</Text>
+      <Text style={{ color: theme.text, fontSize: 16 }}>{item}</Text>
       {!defaultCategories.includes(item) && (
         <TouchableOpacity onPress={() => handleDeleteCategory(item)}>
-          <Text style={{ color: theme.error }}>Delete</Text>
+          <Text style={{ color: theme.error, fontSize: 14 }}>Delete</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -113,35 +107,39 @@ const ManageCategoriesScreen = () => {
         Manage Categories
       </Text>
 
-      <TextInput
-        placeholder="Add new category"
-        placeholderTextColor={theme.placeholder}
-        value={newCategory}
-        onChangeText={setNewCategory}
-        style={[
-          styles.input,
-          {
-            borderColor: theme.border,
-            color: theme.text,
-            backgroundColor: theme.input,
-          },
-        ]}
-      />
+      <View style={styles.inputSection}>
+        <TextInput
+          placeholder="Add new category"
+          placeholderTextColor={theme.placeholder}
+          value={newCategory}
+          onChangeText={setNewCategory}
+          style={[
+            styles.input,
+            {
+              borderColor: theme.border,
+              color: theme.text,
+              backgroundColor: theme.input,
+            },
+          ]}
+        />
 
-      <TouchableOpacity
-        onPress={handleAddCategory}
-        style={[styles.button, { backgroundColor: theme.primary }]}
-      >
-        <Text style={{ color: theme.buttonText, fontWeight: "500" }}>
-          ➕ Add Category
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleAddCategory}
+          style={[styles.button, { backgroundColor: theme.primary }]}
+        >
+          <Text
+            style={{ color: theme.buttonText, fontSize: 16, fontWeight: "600" }}
+          >
+            ➕ Add Category
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <FlatList
-        data={categories} // Use categories from CategoryContext
+        data={categories}
         keyExtractor={(item) => item}
         renderItem={renderCategory}
-        style={{ marginTop: 24 }}
+        contentContainerStyle={{ paddingTop: 10 }}
       />
     </SafeAreaView>
   );
@@ -150,31 +148,37 @@ const ManageCategoriesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    marginBottom: 16,
+    marginBottom: 20,
     textAlign: "center",
+  },
+  inputSection: {
+    marginBottom: 30,
   },
   input: {
     borderWidth: 1,
-    padding: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: radius.medium,
+    fontSize: 16,
     marginBottom: 12,
   },
   button: {
-    padding: 12,
+    paddingVertical: 14,
     borderRadius: radius.medium,
     alignItems: "center",
   },
   categoryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: radius.medium,
-    marginBottom: 10,
+    marginBottom: 12,
   },
 });
 

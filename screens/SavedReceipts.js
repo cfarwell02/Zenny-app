@@ -148,9 +148,35 @@ const SavedReceiptsScreen = () => {
         edges={["top", "left", "right"]}
       >
         {receipts.length === 0 ? (
-          <Text style={{ color: theme.text, textAlign: "center" }}>
-            No receipts saved yet.
-          </Text>
+          <View
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          >
+            <Text style={{ fontSize: 48, marginBottom: 12 }}>🧾</Text>
+            <Text
+              style={{
+                color: theme.text,
+                fontSize: 18,
+                fontWeight: "600",
+                marginBottom: 6,
+              }}
+            >
+              No receipts yet
+            </Text>
+            <Text
+              style={{
+                color: theme.subtleText,
+                fontSize: 14,
+                textAlign: "center",
+                maxWidth: 260,
+                paddingHorizontal: 20,
+                lineHeight: 20,
+                marginBottom: 75,
+              }}
+            >
+              When you add a receipt, it will show up here for easy tracking and
+              filtering.
+            </Text>
+          </View>
         ) : (
           <>
             <TextInput
@@ -219,6 +245,7 @@ const SavedReceiptsScreen = () => {
                     color: theme.subtleText,
                     textAlign: "center",
                     marginTop: 20,
+                    fontSize: 16,
                   }}
                 >
                   No matching receipts found.
@@ -312,79 +339,86 @@ const SavedReceiptsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.screen,
   },
   grid: {
-    gap: 16,
-    flexGrow: 1,
+    gap: 12,
+    paddingBottom: 40,
   },
   card: {
     flex: 1,
-    margin: 8,
-    padding: 12,
+    margin: 6,
+    padding: 8,
     borderRadius: radius.medium,
     alignItems: "center",
+    justifyContent: "center",
+    minWidth: 70,
+    maxWidth: 90,
+    elevation: 2,
   },
   image: {
     width: "100%",
-    height: 125,
-    borderRadius: radius.medium,
-    marginBottom: 8,
+    height: 90,
+    borderRadius: radius.small,
+    marginBottom: 6,
   },
   tagText: {
-    marginTop: 4,
+    marginTop: 2,
+    fontSize: 11,
     fontStyle: "italic",
-    fontSize: 12,
   },
   searchInput: {
     borderWidth: 1,
     borderRadius: radius.medium,
-    padding: 8,
-    paddingHorizontal: 12,
-    marginBottom: 16,
+    padding: 10,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    fontSize: 14,
   },
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
   },
   modalCard: {
-    width: "85%",
-    borderRadius: 16,
-    padding: 16,
+    width: "90%",
+    borderRadius: 18,
+    padding: 20,
     alignItems: "center",
+    elevation: 5,
   },
   modalImage: {
     width: "100%",
     height: 200,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   modalButtonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    marginTop: 16,
+    marginTop: 20,
   },
   editButton: {
     backgroundColor: "#4CAF50",
-    padding: 10,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 10,
     flex: 1,
-    marginRight: 8,
+    marginRight: 10,
   },
   deleteButton: {
     backgroundColor: "#FF3B30",
-    padding: 10,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 10,
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 10,
   },
   buttonText: {
     color: "#fff",
     textAlign: "center",
-    fontWeight: "bold",
+    fontWeight: "600",
   },
   closeButton: {
     position: "absolute",
@@ -393,10 +427,10 @@ const styles = StyleSheet.create({
     zIndex: 1,
     padding: 4,
   },
-
   closeText: {
-    fontSize: 40,
-    color: "#FF0000",
+    fontSize: 36,
+    color: "#FF3B30",
+    fontWeight: "bold",
   },
 });
 

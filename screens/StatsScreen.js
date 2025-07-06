@@ -4,9 +4,10 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   Dimensions,
+  TouchableOpacity,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { BudgetContext } from "../context/BudgetContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
@@ -45,54 +46,97 @@ const StatsScreen = () => {
   return (
     <SafeAreaView style={{ backgroundColor: theme.background, flex: 1 }}>
       <ScrollView
-        style={[styles.container, { backgroundColor: theme.background }]}
+        contentContainerStyle={{
+          padding: 20,
+          paddingBottom: 60,
+          backgroundColor: theme.background,
+        }}
       >
         <Text style={[styles.header, { color: theme.text }]}>
           📈 Spending Stats
         </Text>
-        <Text style={[styles.total, { color: theme.text }]}>
-          Total Spent: ${totalSpent.toFixed(2)}
-        </Text>
 
-        <PieChart
-          data={pieData}
-          width={screenWidth - 40}
-          height={220}
-          chartConfig={{
-            backgroundColor: theme.background,
-            backgroundGradientFrom: theme.background,
-            backgroundGradientTo: theme.background,
-            color: (opacity = 1) => theme.text,
-            labelColor: () => theme.text,
-          }}
-          accessor="amount"
-          backgroundColor="transparent"
-          paddingLeft="15"
-        />
-
-        {Object.entries(categorySpent).map(([category, amount]) => (
-          <View key={category} style={styles.statRow}>
-            <Text style={[styles.label, { color: theme.text }]}>
-              {category}:
-            </Text>
-            <Text style={[styles.value, { color: theme.text }]}>
-              ${amount.toFixed(2)}
-            </Text>
-          </View>
-        ))}
-
-        {mostSpent.category && (
+        {totalSpent === 0 ? (
           <Text
-            style={[
-              styles.tip,
-              { backgroundColor: theme.card, color: theme.text },
-            ]}
+            style={{
+              color: theme.subtleText,
+              textAlign: "center",
+              marginTop: 20,
+            }}
           >
-            💡 You spent the most on{" "}
-            <Text style={{ fontWeight: "bold" }}>{mostSpent.category}</Text> ($
-            {mostSpent.amount.toFixed(2)}). Consider budgeting more carefully in
-            this area!
+            No expenses recorded yet. Start by adding a receipt!
           </Text>
+        ) : (
+          <>
+            <Text style={[styles.total, { color: theme.text }]}>
+              Total Spent: ${totalSpent.toFixed(2)}
+            </Text>
+
+            <PieChart
+              data={pieData}
+              width={screenWidth - 40}
+              height={220}
+              chartConfig={{
+                backgroundColor: theme.background,
+                backgroundGradientFrom: theme.background,
+                backgroundGradientTo: theme.background,
+                color: () => theme.text,
+                labelColor: () => theme.text,
+              }}
+              accessor="amount"
+              backgroundColor="transparent"
+              paddingLeft="15"
+            />
+
+            {Object.entries(categorySpent).map(([category, amount]) => (
+              <View
+                key={category}
+                style={[styles.statCard, { backgroundColor: theme.card }]}
+              >
+                <Text style={[styles.statLabel, { color: theme.text }]}>
+                  {category}
+                </Text>
+                <Text style={[styles.statValue, { color: theme.text }]}>
+                  ${amount.toFixed(2)} (
+                  {((amount / totalSpent) * 100).toFixed(1)}%)
+                </Text>
+              </View>
+            ))}
+
+            {mostSpent.category && (
+              <Text
+                style={[
+                  styles.tip,
+                  {
+                    backgroundColor: theme.card,
+                    color: theme.text,
+                    borderLeftColor: "#FF6384",
+                  },
+                ]}
+              >
+                💡 You spent the most on{" "}
+                <Text style={{ fontWeight: "bold" }}>{mostSpent.category}</Text>{" "}
+                ($
+                {mostSpent.amount.toFixed(2)}). Consider budgeting more
+                carefully in this area!
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={{
+                marginTop: 24,
+                padding: 14,
+                borderRadius: 10,
+                backgroundColor: theme.primary,
+                alignSelf: "center",
+              }}
+              onPress={() => alert("Export as PDF or Email coming soon!")}
+            >
+              <Text style={{ color: theme.buttonText, fontWeight: "600" }}>
+                📤 Export Report
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -100,21 +144,33 @@ const StatsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 20 },
-  header: { fontSize: 22, fontWeight: "bold", marginBottom: 16 },
+  header: { fontSize: 22, fontWeight: "bold", marginBottom: 16, marginTop: 20 },
   total: { fontSize: 18, marginBottom: 20 },
-  statRow: {
+  statCard: {
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  label: { fontSize: 16 },
-  value: { fontSize: 16, fontWeight: "600" },
+  statLabel: {
+    fontSize: 16,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
   tip: {
     marginTop: 30,
     fontSize: 16,
-    padding: 12,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
   },
 });
 
