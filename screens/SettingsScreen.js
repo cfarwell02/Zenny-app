@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
@@ -104,62 +105,64 @@ const SettingsScreen = () => {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.container,
-        { backgroundColor: theme.background },
-      ]}
-    >
-      <Text style={[styles.header, { color: theme.text }]}>Settings</Text>
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { backgroundColor: theme.background },
+        ]}
+      >
+        <Text style={[styles.header, { color: theme.text }]}>Settings</Text>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.subtleText }]}>
-          Preferences
-        </Text>
-
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.text }]}>Dark Mode</Text>
-          <Switch value={darkMode} onValueChange={toggleDarkMode} />
-        </View>
-
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.text }]}>
-            Notifications
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.subtleText }]}>
+            Preferences
           </Text>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={handleToggleNotifications}
-          />
+
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: theme.text }]}>Dark Mode</Text>
+            <Switch value={darkMode} onValueChange={toggleDarkMode} />
+          </View>
+
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: theme.text }]}>
+              Notifications
+            </Text>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={handleToggleNotifications}
+            />
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.subtleText }]}>
-          Account
-        </Text>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.subtleText }]}>
+            Account
+          </Text>
 
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.danger }]}
-          onPress={handleClearData}
-        >
-          <Text style={styles.buttonText}>🗑️ Clear All Receipts</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: theme.danger }]}
+            onPress={handleClearData}
+          >
+            <Text style={styles.buttonText}>🗑️ Clear All Receipts</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: "#999" }]}
-          onPress={handleSignOut}
-        >
-          <Text style={styles.buttonText}>🚪 Log Out</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: "#999" }]}
+            onPress={handleSignOut}
+          >
+            <Text style={styles.buttonText}>🚪 Log Out</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: "#cc0000" }]}
-          onPress={confirmDeleteAccount}
-        >
-          <Text style={styles.buttonText}>⚠️ Delete Account</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: "#cc0000" }]}
+            onPress={confirmDeleteAccount}
+          >
+            <Text style={styles.buttonText}>⚠️ Delete Account</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

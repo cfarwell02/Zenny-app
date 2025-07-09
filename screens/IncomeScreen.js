@@ -184,6 +184,10 @@ const IncomeScreen = () => {
       animationType="slide"
       onRequestClose={() => setShowAddModal(false)}
     >
+      <StatusBar
+        barStyle={darkMode ? "light-content" : "dark-content"}
+        backgroundColor={theme.cardBg}
+      />
       <View style={[styles.bottomSheet, { backgroundColor: theme.cardBg }]}>
         <View style={styles.modalHeader}>
           <Text style={[styles.modalTitle, { color: theme.text }]}>
@@ -236,48 +240,61 @@ const IncomeScreen = () => {
     const totalIncome = calculateTotalIncome(selectedPeriod);
 
     return (
-      <Modal visible={showStatsModal} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View
-            style={[styles.modalContent, { backgroundColor: theme.cardBg }]}
-          >
+      <Modal
+        visible={showStatsModal}
+        animationType="slide"
+        onRequestClose={() => setShowStatsModal(false)}
+      >
+        <StatusBar
+          barStyle={darkMode ? "light-content" : "dark-content"}
+          backgroundColor={theme.cardBg}
+        />
+        <View style={[styles.bottomSheet, { backgroundColor: theme.cardBg }]}>
+          <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
               📊 Income Summary ({selectedPeriod})
             </Text>
-
-            <View style={{ marginBottom: 12 }}>
-              <Text style={{ color: theme.text, fontWeight: "bold" }}>
-                Total: ${Math.round(totalIncome).toLocaleString()}
-              </Text>
-            </View>
-
-            {Object.keys(typeStats).length === 0 ? (
-              <Text style={{ color: theme.subtleText }}>
-                No income data available
-              </Text>
-            ) : (
-              Object.entries(typeStats).map(([type, data]) => (
-                <View key={type} style={styles.statRow}>
-                  <Text style={[styles.statLabel, { color: theme.text }]}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Text>
-                  <Text style={{ color: theme.text }}>
-                    ${Math.round(data.total).toLocaleString()}
-                  </Text>
-                </View>
-              ))
-            )}
-
-            <TouchableOpacity
-              style={[
-                styles.confirmButton,
-                { backgroundColor: theme.primary, marginTop: 20 },
-              ]}
-              onPress={() => setShowStatsModal(false)}
-            >
-              <Text style={{ color: "white" }}>Close</Text>
-            </TouchableOpacity>
           </View>
+
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ color: theme.text, fontWeight: "bold" }}>
+              Total: ${Math.round(totalIncome).toLocaleString()}
+            </Text>
+          </View>
+
+          {Object.keys(typeStats).length === 0 ? (
+            <Text style={{ color: theme.subtleText }}>
+              No income data available
+            </Text>
+          ) : (
+            Object.entries(typeStats).map(([type, data]) => (
+              <View key={type} style={styles.statRow}>
+                <Text style={[styles.statLabel, { color: theme.text }]}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </Text>
+                <Text style={{ color: theme.text }}>
+                  ${Math.round(data.total).toLocaleString()}
+                </Text>
+              </View>
+            ))
+          )}
+
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              { backgroundColor: theme.primary, marginTop: 20 },
+            ]}
+            onPress={() => setShowStatsModal(false)}
+          >
+            <Text style={styles.primaryButtonText}>Close</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShowStatsModal(false)}
+            style={styles.cancelButton}
+          >
+            <Text style={{ color: theme.subtleText }}>Cancel</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     );

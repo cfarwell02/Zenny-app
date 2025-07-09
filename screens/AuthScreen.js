@@ -321,12 +321,13 @@ const createStyles = (theme) =>
     },
     googleButton: {
       height: 56,
-      backgroundColor: theme?.surface || "#FFFFFF",
       borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme?.border || "#E0E0E0",
       justifyContent: "center",
       alignItems: "center",
+      backgroundColor:
+        theme?.googleButtonBg || (theme?.dark ? "#ffffff" : "#ffffff"),
+      borderWidth: 1,
+      borderColor: theme?.border || "#E0E0E0",
       shadowColor: "#000000",
       shadowOffset: {
         width: 0,
@@ -337,7 +338,7 @@ const createStyles = (theme) =>
       elevation: 3,
     },
     googleButtonText: {
-      color: theme?.text || "#000000",
+      color: theme?.googleButtonText || (theme?.dark ? "#000000" : "#000000"),
       fontSize: 16,
       fontWeight: "600",
     },
