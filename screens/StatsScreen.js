@@ -16,11 +16,13 @@ import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { PieChart } from "react-native-chart-kit";
+import { useNavigation } from "@react-navigation/native";
 
 const StatsScreen = () => {
   const { expenses } = useContext(BudgetContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const navigation = useNavigation();
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -285,6 +287,26 @@ const StatsScreen = () => {
     </Animated.View>
   );
 
+  const renderTrendsButton = () => (
+    <TouchableOpacity
+      style={[
+        styles.trendsButton,
+        { backgroundColor: darkMode ? theme.cardBackground : "#4CAF50" },
+      ]}
+      onPress={() => navigation.navigate("Trends")}
+      activeOpacity={0.85}
+    >
+      <Text
+        style={[
+          styles.trendsButtonText,
+          { color: darkMode ? theme.text : "#fff" },
+        ]}
+      >
+        📈 View Trends
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -294,6 +316,7 @@ const StatsScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {renderTrendsButton()}
         {renderHeader()}
 
         {totalSpent === 0 ? (
@@ -527,6 +550,24 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  trendsButton: {
+    marginTop: 60, // Increased top padding
+    marginBottom: 18,
+    borderRadius: radius.large,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    marginHorizontal: 8,
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  trendsButtonText: {
+    fontSize: 18,
+    fontWeight: "700",
   },
 });
 

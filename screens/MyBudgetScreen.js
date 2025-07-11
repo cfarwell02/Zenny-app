@@ -25,11 +25,6 @@ const MyBudgetScreen = ({ navigation }) => {
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const cardAnims = useRef([]).current;
-
   const categorySpent = {};
   expenses.forEach((e) => {
     categorySpent[e.category] = (categorySpent[e.category] || 0) + e.amount;
@@ -37,15 +32,16 @@ const MyBudgetScreen = ({ navigation }) => {
 
   const allRelevantCategories = [
     ...new Set([
-      ...categories.filter(
-        (cat) =>
-          categoryBudgets.hasOwnProperty(cat) ||
-          categorySpent.hasOwnProperty(cat)
-      ),
-      ...Object.keys(categoryBudgets).filter((cat) => categories.includes(cat)),
-      ...Object.keys(categorySpent).filter((cat) => categories.includes(cat)),
+      ...categories,
+      ...Object.keys(categoryBudgets),
+      ...Object.keys(categorySpent),
     ]),
-  ];
+  ].filter(Boolean);
+
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const cardAnims = useRef([]).current;
 
   // Initialize card animations
   useEffect(() => {
@@ -99,11 +95,11 @@ const MyBudgetScreen = ({ navigation }) => {
   };
 
   const renderBudgetCard = (category, index) => {
-    const budgetObj = categoryBudgets[category];
-    const budget =
-      budgetObj && typeof budgetObj === "object"
-        ? budgetObj.amount
-        : budgetObj || 0;
+    const budgetObj =
+      categoryBudgets[category] && typeof categoryBudgets[category] === "object"
+        ? categoryBudgets[category]
+        : { amount: 0, threshold: 80, notified: false };
+    const budget = budgetObj.amount;
     const spent = categorySpent[category] || 0;
     const remaining = budget - spent;
     const progressColor = getProgressColor(spent, budget);
@@ -114,7 +110,7 @@ const MyBudgetScreen = ({ navigation }) => {
         key={category}
         style={[
           {
-            opacity: cardAnims[index] || 0,
+            opacity: 1, // Always visible
             transform: [
               {
                 translateY:
@@ -382,6 +378,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.large,
     padding: 6,
     marginBottom: 6,
+    borderWidth: 1, // Added border
+    borderColor: "#ccc", // Added border
+    backgroundColor: "#f0f0f0", // Added background
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 4 },

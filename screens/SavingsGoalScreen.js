@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemeContext } from "../context/ThemeContext";
+import { DataContext } from "../context/DataContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
@@ -21,12 +22,18 @@ const { width } = Dimensions.get("window");
 
 const SavingsGoalScreen = () => {
   const { darkMode } = useContext(ThemeContext);
+  const { userData, saveGoals } = useContext(DataContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
   const [goals, setGoals] = useState([]);
   const [goalName, setGoalName] = useState("");
   const [goalAmount, setGoalAmount] = useState("");
   const [savedAmount, setSavedAmount] = useState("");
+
+  // Sync with DataContext
+  useEffect(() => {
+    setGoals(userData.goals || []);
+  }, [userData.goals]);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -57,7 +64,7 @@ const SavingsGoalScreen = () => {
     }).start();
   }, []);
 
-  const addGoal = () => {
+  const addGoal = async () => {
     if (!goalName || !goalAmount || !savedAmount) return;
     const newGoal = {
       id: Date.now().toString(),
@@ -65,20 +72,22 @@ const SavingsGoalScreen = () => {
       goal: parseFloat(goalAmount),
       saved: parseFloat(savedAmount),
     };
-    setGoals([newGoal, ...goals]);
+    const updatedGoals = [newGoal, ...goals];
+    setGoals(updatedGoals);
+    await saveGoals(updatedGoals);
     setGoalName("");
     setGoalAmount("");
     setSavedAmount("");
   };
 
-  const adjustSavedAmount = (goalId, amount) => {
-    setGoals((prev) =>
-      prev.map((goal) =>
-        goal.id === goalId
-          ? { ...goal, saved: Math.max(0, goal.saved + amount) }
-          : goal
-      )
+  const adjustSavedAmount = async (goalId, amount) => {
+    const updatedGoals = goals.map((goal) =>
+      goal.id === goalId
+        ? { ...goal, saved: Math.max(0, goal.saved + amount) }
+        : goal
     );
+    setGoals(updatedGoals);
+    await saveGoals(updatedGoals);
   };
 
   const deleteGoal = (goalId) => {
@@ -90,8 +99,10 @@ const SavingsGoalScreen = () => {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            setGoals((prev) => prev.filter((goal) => goal.id !== goalId));
+          onPress: async () => {
+            const updatedGoals = goals.filter((goal) => goal.id !== goalId);
+            setGoals(updatedGoals);
+            await saveGoals(updatedGoals);
           },
         },
       ]

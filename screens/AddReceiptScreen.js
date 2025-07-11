@@ -43,7 +43,13 @@ const AddReceiptScreen = () => {
   const { categories } = useContext(CategoryContext);
   const { addReceipt } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
-  const { categoryBudgets, threshold, expenses } = useContext(BudgetContext);
+  const {
+    categoryBudgets,
+    threshold,
+    expenses,
+    setCategoryBudgets,
+    saveBudgets,
+  } = useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
   const { notificationsEnabled } = useContext(NotificationContext);
 
@@ -123,32 +129,8 @@ const AddReceiptScreen = () => {
       tag: tag.trim(),
     };
 
-    // Save the new expense and receipt
-    addReceipt(newReceipt);
-
-    try {
-      const user = auth().currentUser;
-
-      if (!user) {
-        console.log("❌ No logged-in user found.");
-        setIsLoading(false);
-        return;
-      }
-
-      await firestore().collection("receipts").add({
-        user_id: user.uid,
-        amount: parsedAmount,
-        category: selectedCategory,
-        date: new Date().toISOString(),
-        image_url: image,
-        tag: tag.trim(),
-        created_at: firestore.FieldValue.serverTimestamp(),
-      });
-
-      console.log("✅ Receipt saved to Firestore!");
-    } catch (err) {
-      console.error("⚠️ Firestore error:", err.message);
-    }
+    // Save the new expense and receipt (await for persistence)
+    await addReceipt(newReceipt);
 
     // Reset form
     setImage(null);
@@ -165,16 +147,28 @@ const AddReceiptScreen = () => {
     );
     const totalSpent = categoryExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-    const budgetLimit = categoryBudgets[selectedCategory];
+    // Get the correct budget object for the selected category
+    const budgetObj =
+      categoryBudgets[selectedCategory] &&
+      typeof categoryBudgets[selectedCategory] === "object"
+        ? categoryBudgets[selectedCategory]
+        : { amount: 0, threshold: 80, notified: false };
+    const budgetLimit = budgetObj.amount;
+    const thresholdValue = budgetObj.threshold;
     const percentSpent = budgetLimit ? (totalSpent / budgetLimit) * 100 : 0;
 
-    console.log("📊 DEBUG:");
-    console.log("Budget Limit:", budgetLimit);
-    console.log("Threshold (%):", threshold);
-    console.log("Total Spent:", totalSpent.toFixed(2));
-    console.log("Percent Spent:", percentSpent.toFixed(2));
+    // Debug logs
+    // console.log("Budget Limit:", budgetLimit);
+    // console.log("Threshold (%):", thresholdValue);
+    // console.log("Total Spent:", totalSpent);
+    // console.log("Percent Spent:", percentSpent);
 
-    if (budgetLimit && percentSpent > threshold && notificationsEnabled) {
+    if (
+      budgetLimit &&
+      percentSpent >= thresholdValue &&
+      notificationsEnabled &&
+      !budgetObj.notified
+    ) {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "⚠️ Budget Threshold Reached",
@@ -185,6 +179,19 @@ const AddReceiptScreen = () => {
         },
         trigger: null,
       });
+      // Mark as notified and persist
+      const updatedBudget = {
+        ...budgetObj,
+        notified: true,
+      };
+      const updatedBudgets = {
+        ...categoryBudgets,
+        [selectedCategory]: updatedBudget,
+      };
+      setCategoryBudgets(updatedBudgets);
+      if (typeof saveBudgets === "function") {
+        await saveBudgets(updatedBudgets);
+      }
     }
   };
 

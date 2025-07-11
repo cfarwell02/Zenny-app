@@ -14,6 +14,7 @@ import AuthScreen from "../screens/AuthScreen";
 import ManageCategoriesScreen from "../screens/ManageCategoriesScreen";
 import IncomeScreen from "../screens/IncomeScreen";
 import SavingsGoalScreen from "../screens/SavingsGoalScreen";
+import TrendsScreen from "../screens/TrendsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -69,6 +70,13 @@ const AppNavigator = () => {
           />
           <Stack.Screen name="Income" component={IncomeScreen} />
           <Stack.Screen name="SavingsGoal" component={SavingsGoalScreen} />
+          <Stack.Screen
+            name="Trends"
+            component={TrendsScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
         </>
       ) : (
         <Stack.Screen name="Auth">

@@ -1,6 +1,5 @@
-import React, { createContext, useEffect, useState } from "react";
-import firestore from "@react-native-firebase/firestore";
-import auth from "@react-native-firebase/auth";
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { DataContext } from "./DataContext";
 
 export const CategoryContext = createContext();
 
@@ -8,26 +7,40 @@ const defaultCategories = ["Food", "Shopping", "Transport", "Bills"];
 
 export const CategoryProvider = ({ children }) => {
   const [categories, setCategories] = useState(defaultCategories);
+  const { userData, saveCategories } = useContext(DataContext);
 
+  // Sync with DataContext
   useEffect(() => {
-    const user = auth().currentUser;
-    if (!user) return;
+    if (userData.categories && userData.categories.length > 0) {
+      setCategories(userData.categories);
+    } else {
+      setCategories(defaultCategories);
+    }
+  }, [userData.categories]);
 
-    const unsubscribe = firestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("categories")
-      .onSnapshot((snapshot) => {
-        const custom = snapshot.docs.map((doc) => doc.data().name);
-        const combined = [...new Set([...defaultCategories, ...custom])];
-        setCategories(combined);
-      });
+  const addCategory = async (categoryName) => {
+    if (!categories.includes(categoryName)) {
+      const updatedCategories = [...categories, categoryName];
+      setCategories(updatedCategories);
+      await saveCategories(updatedCategories);
+    }
+  };
 
-    return () => unsubscribe(); // ✅ cleanup on unmount
-  }, []);
+  const deleteCategory = async (categoryName) => {
+    const updatedCategories = categories.filter((cat) => cat !== categoryName);
+    setCategories(updatedCategories);
+    await saveCategories(updatedCategories);
+  };
 
   return (
-    <CategoryContext.Provider value={{ categories, setCategories }}>
+    <CategoryContext.Provider
+      value={{
+        categories,
+        setCategories,
+        addCategory,
+        deleteCategory,
+      }}
+    >
       {children}
     </CategoryContext.Provider>
   );

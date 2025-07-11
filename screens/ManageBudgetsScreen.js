@@ -23,8 +23,12 @@ import { spacing } from "../constants/spacing";
 import { Picker } from "@react-native-picker/picker";
 
 const ManageBudgetScreen = ({ navigation }) => {
-  const { categoryBudgets, updateCategoryBudget, setCategoryBudgets } =
-    useContext(BudgetContext);
+  const {
+    categoryBudgets,
+    updateCategoryBudget,
+    setCategoryBudgets,
+    cleanupDeletedCategoryBudgets,
+  } = useContext(BudgetContext);
   const { categories } = useContext(CategoryContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
@@ -111,16 +115,13 @@ const ManageBudgetScreen = ({ navigation }) => {
     }
 
     try {
-      setCategoryBudgets((prev) => ({
-        ...prev,
-        [selectedCategory]: {
-          ...(typeof prev[selectedCategory] === "object"
-            ? prev[selectedCategory]
-            : { amount: prev[selectedCategory] || 0 }),
-          amount: Number(newAmount),
-          threshold: Number(threshold),
-        },
-      }));
+      await updateCategoryBudget(
+        selectedCategory,
+        Number(newAmount),
+        Number(threshold)
+      );
+      // Optionally, update threshold if needed (not handled by updateCategoryBudget)
+      // You may want to extend updateCategoryBudget to handle threshold as well
 
       Alert.alert(
         "Saved",
@@ -133,6 +134,20 @@ const ManageBudgetScreen = ({ navigation }) => {
     } catch (error) {
       console.error("Error saving budget:", error);
       Alert.alert("Error", "Failed to save budget. Please try again.");
+    }
+  };
+
+  const handleRemoveBudget = async () => {
+    if (!selectedCategory) return;
+    try {
+      await cleanupDeletedCategoryBudgets(selectedCategory);
+      Alert.alert("Removed", `Budget removed for ${selectedCategory}.`);
+      setSelectedCategory("");
+      setNewAmount("");
+      setThreshold("");
+    } catch (error) {
+      console.log("Remove budget error:", error);
+      Alert.alert("Error", "Failed to remove budget. Please try again.");
     }
   };
 
@@ -278,6 +293,16 @@ const ManageBudgetScreen = ({ navigation }) => {
         >
           <Text style={styles.saveButtonText}>💾 Save Budget</Text>
         </TouchableOpacity>
+        {/* Remove Budget Button - only show if a budget is set for the selected category */}
+        {selectedCategory && categoryBudgets[selectedCategory] && (
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={handleRemoveBudget}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.removeButtonText}>Remove Budget</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </Animated.View>
   );
@@ -435,6 +460,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radius.medium,
     overflow: "hidden",
+  },
+  removeButton: {
+    marginTop: 16,
+    backgroundColor: "#E74C3C",
+    paddingVertical: 14,
+    borderRadius: radius.large,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#E74C3C",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  removeButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
 });
 

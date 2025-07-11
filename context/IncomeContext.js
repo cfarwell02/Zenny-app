@@ -1,22 +1,41 @@
-import React, { createContext, useState } from "react";
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { DataContext } from "./DataContext";
 
 export const IncomeContext = createContext();
 
 export const IncomeProvider = ({ children }) => {
   const [incomeList, setIncomeList] = useState([]);
+  const { userData, saveIncomes } = useContext(DataContext);
 
-  const addIncome = (income) => {
-    setIncomeList((prev) => [income, ...prev]);
+  // Sync with DataContext
+  useEffect(() => {
+    setIncomeList(userData.incomes || []);
+  }, [userData.incomes]);
+
+  const addIncome = async (income) => {
+    const updatedIncomes = [income, ...incomeList];
+    setIncomeList(updatedIncomes);
+
+    // Save to Firestore
+    await saveIncomes(updatedIncomes);
   };
 
-  const deleteIncome = (id) => {
-    setIncomeList((prev) => prev.filter((item) => item.id !== id));
+  const deleteIncome = async (id) => {
+    const updatedIncomes = incomeList.filter((item) => item.id !== id);
+    setIncomeList(updatedIncomes);
+
+    // Save to Firestore
+    await saveIncomes(updatedIncomes);
   };
 
-  const editIncome = (id, updated) => {
-    setIncomeList((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...updated } : item))
+  const editIncome = async (id, updated) => {
+    const updatedIncomes = incomeList.map((item) =>
+      item.id === id ? { ...item, ...updated } : item
     );
+    setIncomeList(updatedIncomes);
+
+    // Save to Firestore
+    await saveIncomes(updatedIncomes);
   };
 
   return (

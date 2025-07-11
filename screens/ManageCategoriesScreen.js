@@ -19,8 +19,6 @@ import { CategoryContext } from "../context/CategoryContext";
 import { BudgetContext } from "../context/BudgetContext";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
-import firestore from "@react-native-firebase/firestore";
-import auth from "@react-native-firebase/auth";
 
 const defaultCategories = ["Food", "Shopping", "Transport", "Bills"];
 
@@ -29,7 +27,8 @@ const ManageCategoriesScreen = () => {
 
   const { darkMode } = useContext(ThemeContext);
   const { receipts } = useContext(ReceiptContext);
-  const { categories } = useContext(CategoryContext);
+  const { categories, addCategory, deleteCategory } =
+    useContext(CategoryContext);
   const { cleanupDeletedCategoryBudgets } = useContext(BudgetContext);
   const { categoryBudgets, setCategoryBudgets, updateCategoryBudget } =
     useContext(BudgetContext);
@@ -78,14 +77,7 @@ const ManageCategoriesScreen = () => {
     }
 
     try {
-      const user = auth().currentUser;
-      await firestore()
-        .collection("users")
-        .doc(user.uid)
-        .collection("categories")
-        .doc(trimmed)
-        .set({ name: trimmed });
-
+      await addCategory(trimmed);
       setNewCategory("");
     } catch (err) {
       console.error("Error saving category:", err);
@@ -107,15 +99,7 @@ const ManageCategoriesScreen = () => {
     }
 
     try {
-      const user = auth().currentUser;
-
-      await firestore()
-        .collection("users")
-        .doc(user.uid)
-        .collection("categories")
-        .doc(category)
-        .delete();
-
+      await deleteCategory(category);
       await cleanupDeletedCategoryBudgets(category);
     } catch (err) {
       console.error("Error deleting category:", err);
