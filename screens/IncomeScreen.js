@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Modal,
   Dimensions,
   StatusBar,
+  Platform,
+  Animated,
 } from "react-native";
 import {
   DollarSign,
@@ -30,6 +32,8 @@ import { Picker } from "@react-native-picker/picker";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { radius } from "../constants/radius";
+import { spacing } from "../constants/spacing";
 
 const { width } = Dimensions.get("window");
 
@@ -48,6 +52,35 @@ const IncomeScreen = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [hideAmounts, setHideAmounts] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
+
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Animate header
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Animate content
+    Animated.timing(contentAnim, {
+      toValue: 1,
+      duration: 600,
+      delay: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const incomeTypeIcons = {
     salary: Briefcase,
@@ -178,6 +211,216 @@ const IncomeScreen = () => {
     return typeStats;
   };
 
+  const renderHeader = () => (
+    <Animated.View
+      style={[
+        styles.header,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
+      <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+        Welcome to your
+      </Text>
+      <Text style={[styles.appName, { color: theme.text }]}>
+        <Text style={styles.zennyAccent}>Income</Text>
+      </Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+        Track and manage your income sources
+      </Text>
+    </Animated.View>
+  );
+
+  const renderAddSection = () => (
+    <Animated.View
+      style={[
+        styles.addSection,
+        {
+          opacity: contentAnim,
+          transform: [
+            {
+              translateY: contentAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.addCard}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Add Income Source
+        </Text>
+
+        <TextInput
+          placeholder="Income source (e.g., Paycheck)"
+          value={source}
+          onChangeText={setSource}
+          style={[
+            styles.input,
+            {
+              borderColor: theme.textSecondary + "30",
+              color: theme.text,
+              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+              shadowColor: theme.text,
+            },
+          ]}
+          placeholderTextColor={theme.textSecondary}
+        />
+
+        <TextInput
+          placeholder="Amount ($)"
+          value={amount}
+          keyboardType="numeric"
+          onChangeText={(text) => setAmount(validateAmount(text))}
+          style={[
+            styles.input,
+            {
+              borderColor: theme.textSecondary + "30",
+              color: theme.text,
+              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+              shadowColor: theme.text,
+            },
+          ]}
+          placeholderTextColor={theme.textSecondary}
+        />
+
+        <TouchableOpacity
+          style={[
+            styles.addButton,
+            {
+              backgroundColor: "#4CAF50",
+            },
+          ]}
+          onPress={() => setShowAddModal(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.addButtonText}>💼 Add Income</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+
+  const renderIncomeCard = (item) => {
+    const Icon = incomeTypeIcons[item.type] || DollarSign;
+    const isEditing = editingId === item.id;
+    const iconColor = incomeTypeColors[item.type] || theme.primary;
+
+    return (
+      <View
+        key={item.id}
+        style={[
+          styles.incomeCard,
+          {
+            backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+            shadowColor: theme.text,
+          },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.incomeInfo}>
+            <View
+              style={[styles.incomeIcon, { backgroundColor: iconColor + "20" }]}
+            >
+              <Icon color={iconColor} size={20} />
+            </View>
+            <View style={styles.incomeDetails}>
+              <Text style={[styles.incomeSource, { color: theme.text }]}>
+                {item.source}
+              </Text>
+              <Text style={[styles.incomeAmount, { color: "#4CAF50" }]}>
+                {formatCurrency(item.amount)}
+              </Text>
+              <View style={styles.incomeMetadata}>
+                <Text
+                  style={[
+                    styles.incomeFrequency,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  {item.frequency}
+                </Text>
+                <Text
+                  style={[styles.incomeDate, { color: theme.textSecondary }]}
+                >
+                  {new Date(item.date).toLocaleDateString()}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => startEdit(item)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.editButtonText}>✏️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => deleteIncome(item.id)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.deleteButtonText}>🗑️</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {isEditing && (
+          <View style={styles.editContainer}>
+            <TextInput
+              value={editSource}
+              onChangeText={setEditSource}
+              style={[
+                styles.editInput,
+                {
+                  borderColor: theme.textSecondary + "30",
+                  color: theme.text,
+                  backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+                },
+              ]}
+              placeholderTextColor={theme.textSecondary}
+            />
+            <TextInput
+              value={editAmount}
+              onChangeText={(text) => setEditAmount(validateAmount(text))}
+              keyboardType="numeric"
+              style={[
+                styles.editInput,
+                {
+                  borderColor: theme.textSecondary + "30",
+                  color: theme.text,
+                  backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+                },
+              ]}
+              placeholderTextColor={theme.textSecondary}
+            />
+            <View style={styles.editActions}>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={saveEdit}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.saveButtonText}>✓</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelEditButton}
+                onPress={cancelEdit}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelEditButtonText}>✗</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const renderAddModal = () => (
     <Modal
       visible={showAddModal}
@@ -186,41 +429,52 @@ const IncomeScreen = () => {
     >
       <StatusBar
         barStyle={darkMode ? "light-content" : "dark-content"}
-        backgroundColor={theme.cardBg}
+        backgroundColor={theme.cardBackground}
       />
-      <View style={[styles.bottomSheet, { backgroundColor: theme.cardBg }]}>
+      <View
+        style={[styles.bottomSheet, { backgroundColor: theme.cardBackground }]}
+      >
         <View style={styles.modalHeader}>
           <Text style={[styles.modalTitle, { color: theme.text }]}>
-            Add Income
+            Add Income Source
           </Text>
         </View>
 
         <TextInput
           placeholder="e.g. Paycheck"
-          placeholderTextColor={theme.subtleText}
+          placeholderTextColor={theme.textSecondary}
           value={source}
           onChangeText={setSource}
           style={[
             styles.inputField,
-            { color: theme.text, borderColor: theme.border },
+            {
+              color: theme.text,
+              borderColor: theme.textSecondary + "30",
+              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+            },
           ]}
         />
 
         <TextInput
           placeholder="Amount"
-          placeholderTextColor={theme.subtleText}
+          placeholderTextColor={theme.textSecondary}
           value={amount}
           keyboardType="numeric"
           onChangeText={(text) => setAmount(validateAmount(text))}
           style={[
             styles.inputField,
-            { color: theme.text, borderColor: theme.border },
+            {
+              color: theme.text,
+              borderColor: theme.textSecondary + "30",
+              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+            },
           ]}
         />
 
         <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: theme.primary }]}
+          style={[styles.primaryButton, { backgroundColor: "#4CAF50" }]}
           onPress={addIncome}
+          activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>Save</Text>
         </TouchableOpacity>
@@ -229,7 +483,7 @@ const IncomeScreen = () => {
           onPress={() => setShowAddModal(false)}
           style={styles.cancelButton}
         >
-          <Text style={{ color: theme.subtleText }}>Cancel</Text>
+          <Text style={{ color: theme.textSecondary }}>Cancel</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -247,44 +501,61 @@ const IncomeScreen = () => {
       >
         <StatusBar
           barStyle={darkMode ? "light-content" : "dark-content"}
-          backgroundColor={theme.cardBg}
+          backgroundColor={theme.cardBackground}
         />
-        <View style={[styles.bottomSheet, { backgroundColor: theme.cardBg }]}>
+        <View
+          style={[
+            styles.bottomSheet,
+            { backgroundColor: theme.cardBackground },
+          ]}
+        >
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
               📊 Income Summary ({selectedPeriod})
             </Text>
           </View>
 
-          <View style={{ marginBottom: 12 }}>
-            <Text style={{ color: theme.text, fontWeight: "bold" }}>
-              Total: ${Math.round(totalIncome).toLocaleString()}
+          <View style={styles.totalIncomeContainer}>
+            <Text
+              style={[styles.totalIncomeLabel, { color: theme.textSecondary }]}
+            >
+              Total Income
+            </Text>
+            <Text style={[styles.totalIncomeAmount, { color: "#4CAF50" }]}>
+              ${Math.round(totalIncome).toLocaleString()}
             </Text>
           </View>
 
           {Object.keys(typeStats).length === 0 ? (
-            <Text style={{ color: theme.subtleText }}>
-              No income data available
-            </Text>
+            <View style={styles.emptyStats}>
+              <Text
+                style={[styles.emptyStatsText, { color: theme.textSecondary }]}
+              >
+                No income data available
+              </Text>
+            </View>
           ) : (
-            Object.entries(typeStats).map(([type, data]) => (
-              <View key={type} style={styles.statRow}>
-                <Text style={[styles.statLabel, { color: theme.text }]}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </Text>
-                <Text style={{ color: theme.text }}>
-                  ${Math.round(data.total).toLocaleString()}
-                </Text>
-              </View>
-            ))
+            <View style={styles.statsContainer}>
+              {Object.entries(typeStats).map(([type, data]) => (
+                <View key={type} style={styles.statRow}>
+                  <Text style={[styles.statLabel, { color: theme.text }]}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </Text>
+                  <Text style={[styles.statValue, { color: theme.text }]}>
+                    ${Math.round(data.total).toLocaleString()}
+                  </Text>
+                </View>
+              ))}
+            </View>
           )}
 
           <TouchableOpacity
             style={[
               styles.primaryButton,
-              { backgroundColor: theme.primary, marginTop: 20 },
+              { backgroundColor: "#4CAF50", marginTop: 20 },
             ]}
             onPress={() => setShowStatsModal(false)}
+            activeOpacity={0.8}
           >
             <Text style={styles.primaryButtonText}>Close</Text>
           </TouchableOpacity>
@@ -293,208 +564,52 @@ const IncomeScreen = () => {
             onPress={() => setShowStatsModal(false)}
             style={styles.cancelButton}
           >
-            <Text style={{ color: theme.subtleText }}>Cancel</Text>
+            <Text style={{ color: theme.textSecondary }}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </Modal>
     );
   };
 
-  // render and return remain mostly unchanged, only content tone and button labels adjusted for "Zenny" feel.
-
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar
-          barStyle={darkMode ? "light-content" : "dark-content"}
-          backgroundColor={theme.background}
-        />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderHeader()}
+        {renderAddSection()}
 
-        <ScrollView
-          style={styles.incomeList}
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.incomeContainer}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Your Income Sources
+          </Text>
+
           {incomeList.length === 0 ? (
             <View style={styles.emptyState}>
-              <DollarSign size={48} color={theme.subtleText} />
-              <Text
-                style={[styles.emptyStateText, { color: theme.subtleText }]}
-              >
+              <Text style={styles.emptyStateIcon}>💼</Text>
+              <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
                 No income sources yet
               </Text>
               <Text
-                style={[styles.emptyStateSubtext, { color: theme.subtleText }]}
+                style={[styles.emptyStateText, { color: theme.textSecondary }]}
               >
-                Add your first income source to get started
+                Add your first income source above to get started
               </Text>
             </View>
           ) : (
-            incomeList.map((item) => {
-              const Icon = incomeTypeIcons[item.type] || DollarSign;
-              const isEditing = editingId === item.id;
-              const iconColor = incomeTypeColors[item.type] || theme.primary;
-
-              return (
-                <View
-                  key={item.id}
-                  style={[
-                    styles.incomeItem,
-                    {
-                      backgroundColor: theme.cardBg,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.incomeIcon,
-                      { backgroundColor: iconColor + "20" },
-                    ]}
-                  >
-                    <Icon color={iconColor} size={20} />
-                  </View>
-
-                  {isEditing ? (
-                    <View style={styles.editContainer}>
-                      <TextInput
-                        value={editSource}
-                        onChangeText={setEditSource}
-                        style={[
-                          styles.editInput,
-                          {
-                            borderColor: theme.border,
-                            color: theme.text,
-                            backgroundColor: theme.background,
-                          },
-                        ]}
-                        placeholderTextColor={theme.subtleText}
-                      />
-                      <TextInput
-                        value={editAmount}
-                        onChangeText={(text) =>
-                          setEditAmount(validateAmount(text))
-                        }
-                        keyboardType="numeric"
-                        style={[
-                          styles.editInput,
-                          {
-                            borderColor: theme.border,
-                            color: theme.text,
-                            backgroundColor: theme.background,
-                            width: 100,
-                          },
-                        ]}
-                        placeholderTextColor={theme.subtleText}
-                      />
-                      <View style={styles.editActions}>
-                        <TouchableOpacity
-                          style={[
-                            styles.editActionButton,
-                            { backgroundColor: theme.primary },
-                          ]}
-                          onPress={saveEdit}
-                        >
-                          <Check size={16} color="white" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[
-                            styles.editActionButton,
-                            { backgroundColor: "#ef4444" },
-                          ]}
-                          onPress={cancelEdit}
-                        >
-                          <X size={16} color="white" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ) : (
-                    <>
-                      <View style={styles.incomeDetails}>
-                        <Text
-                          style={[styles.incomeSource, { color: theme.text }]}
-                        >
-                          {item.source}
-                        </Text>
-                        <Text
-                          style={[styles.incomeAmount, { color: theme.text }]}
-                        >
-                          {formatCurrency(item.amount)}
-                        </Text>
-                        <View style={styles.incomeMetadata}>
-                          <Text
-                            style={[
-                              styles.incomeFrequency,
-                              { color: theme.subtleText },
-                            ]}
-                          >
-                            {item.frequency}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.incomeDate,
-                              { color: theme.subtleText },
-                            ]}
-                          >
-                            {new Date(item.date).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.incomeActions}>
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            { backgroundColor: theme.primary + "20" },
-                          ]}
-                          onPress={() => startEdit(item)}
-                        >
-                          <Edit3 size={16} color={theme.primary} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            { backgroundColor: "#ef444420" },
-                          ]}
-                          onPress={() => deleteIncome(item.id)}
-                        >
-                          <Trash2 size={16} color="#ef4444" />
-                        </TouchableOpacity>
-                      </View>
-                    </>
-                  )}
-                </View>
-              );
-            })
+            incomeList.map((item) => renderIncomeCard(item))
           )}
-        </ScrollView>
-
-        <View style={styles.footerButtons}>
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: theme.primary }]}
-            onPress={() => setShowAddModal(true)}
-          >
-            <Plus color="white" size={20} />
-            <Text style={styles.addButtonText}>Add Income</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.statsButton,
-              { backgroundColor: theme.cardBg, borderColor: theme.border },
-            ]}
-            onPress={() => setShowStatsModal(true)}
-          >
-            <PieChart color={theme.primary} size={20} />
-            <Text style={[styles.statsButtonText, { color: theme.primary }]}>
-              Show Stats
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        {renderAddModal()}
-        {renderStatsModal()}
-      </View>
+        <View style={styles.bottomSpacing} />
+      </ScrollView>
+
+      {renderAddModal()}
+      {renderStatsModal()}
     </SafeAreaView>
   );
 };
@@ -503,29 +618,114 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  incomeList: {
-    padding: 20,
+  scrollView: {
+    flex: 1,
   },
-  emptyState: {
+  scrollContent: {
+    paddingHorizontal: spacing.screen,
+  },
+  header: {
     alignItems: "center",
-    marginTop: 60,
+    paddingVertical: 40,
+    paddingTop: 20,
   },
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 16,
+  welcomeText: {
+    fontSize: 16,
+    fontWeight: "400",
+    marginBottom: 8,
   },
-  emptyStateSubtext: {
+  appName: {
+    fontSize: 36,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  zennyAccent: {
+    color: "#4CAF50",
+  },
+  subtitle: {
     fontSize: 14,
-    marginTop: 4,
+    fontWeight: "400",
+    textAlign: "center",
   },
-  incomeItem: {
+  addSection: {
+    marginBottom: 32,
+  },
+  addCard: {
+    borderRadius: radius.large,
+    padding: 24,
+    backgroundColor: "transparent",
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: radius.medium,
+    padding: 16,
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  addButton: {
+    paddingVertical: 16,
+    borderRadius: radius.medium,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  addButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  incomeContainer: {
+    marginBottom: 24,
+  },
+  incomeCard: {
+    borderRadius: radius.large,
+    padding: 20,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  incomeInfo: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderRadius: 12,
+    flex: 1,
   },
   incomeIcon: {
     width: 40,
@@ -535,152 +735,110 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-  editContainer: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  editInput: {
-    flex: 1,
-    padding: 8,
-    borderWidth: 1,
-    borderRadius: 8,
-    fontSize: 14,
-  },
-  editActions: {
-    flexDirection: "row",
-    gap: 8,
-    marginLeft: 8,
-  },
-  editActionButton: {
-    padding: 8,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   incomeDetails: {
     flex: 1,
   },
   incomeSource: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
+    marginBottom: 4,
   },
   incomeAmount: {
-    fontSize: 16,
-    marginTop: 4,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 4,
   },
   incomeMetadata: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 4,
   },
   incomeFrequency: {
     fontSize: 12,
+    fontWeight: "500",
   },
   incomeDate: {
     fontSize: 12,
+    fontWeight: "500",
   },
-  incomeActions: {
+  cardActions: {
     flexDirection: "row",
     gap: 8,
-    marginLeft: 12,
   },
   actionButton: {
-    padding: 8,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.small,
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+  editButtonText: {
+    fontSize: 16,
   },
-  modalContent: {
-    width: "90%",
-    padding: 20,
-    borderRadius: 12,
+  deleteButtonText: {
+    fontSize: 16,
+  },
+  editContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0, 0, 0, 0.1)",
+  },
+  editInput: {
     borderWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+    borderRadius: radius.medium,
+    padding: 12,
+    fontSize: 14,
     marginBottom: 12,
   },
-  input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 10,
-  },
-  confirmButton: {
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  cancelButton: {
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 6,
-  },
-  statRow: {
+  editActions: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginVertical: 6,
+    gap: 8,
   },
-  statLabel: {
-    fontSize: 14,
-  },
-  footerButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    paddingTop: 12,
-    gap: 12,
-  },
-
-  addButton: {
-    flexDirection: "row",
+  saveButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.small,
+    backgroundColor: "#4CAF50",
     alignItems: "center",
-    justifyContent: "center",
     flex: 1,
-    padding: 12,
-    borderRadius: 10,
-    gap: 6,
   },
-
-  addButtonText: {
-    color: "white",
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
     fontWeight: "600",
-    fontSize: 14,
   },
-
-  statsButton: {
-    flexDirection: "row",
+  cancelEditButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.small,
+    backgroundColor: "#E74C3C",
     alignItems: "center",
-    justifyContent: "center",
     flex: 1,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 6,
   },
-
-  statsButtonText: {
+  cancelEditButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
     fontWeight: "600",
-    fontSize: 14,
   },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-end",
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 40,
   },
-
+  emptyStateIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptyStateText: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+  },
   bottomSheet: {
     padding: 24,
     borderTopLeftRadius: 24,
@@ -688,40 +846,81 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "transparent",
   },
-
   modalHeader: {
     alignItems: "center",
     marginBottom: 16,
   },
-
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
   },
-
   inputField: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.medium,
     padding: 12,
     marginBottom: 12,
     fontSize: 14,
   },
-
   primaryButton: {
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: radius.medium,
     alignItems: "center",
     marginTop: 4,
   },
-
   primaryButtonText: {
     color: "white",
     fontWeight: "600",
   },
-
   cancelButton: {
     marginTop: 12,
     alignItems: "center",
+  },
+  totalIncomeContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+    paddingVertical: 16,
+    borderRadius: radius.medium,
+    backgroundColor: "rgba(76, 175, 80, 0.1)",
+  },
+  totalIncomeLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  totalIncomeAmount: {
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  emptyStats: {
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  emptyStatsText: {
+    fontSize: 16,
+    fontStyle: "italic",
+  },
+  statsContainer: {
+    marginBottom: 20,
+  },
+  statRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: radius.small,
+    backgroundColor: "rgba(0, 0, 0, 0.02)",
+  },
+  statLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  bottomSpacing: {
+    height: 40,
   },
 });
 

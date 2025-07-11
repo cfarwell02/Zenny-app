@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   FlatList,
   Alert,
   StyleSheet,
+  Platform,
+  Animated,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { lightTheme, darkTheme } from "../constants/themes";
@@ -15,6 +18,7 @@ import { ReceiptContext } from "../context/ReceiptContext";
 import { CategoryContext } from "../context/CategoryContext";
 import { BudgetContext } from "../context/BudgetContext";
 import { radius } from "../constants/radius";
+import { spacing } from "../constants/spacing";
 import firestore from "@react-native-firebase/firestore";
 import auth from "@react-native-firebase/auth";
 
@@ -28,6 +32,35 @@ const ManageCategoriesScreen = () => {
   const { categories } = useContext(CategoryContext);
   const { cleanupDeletedCategoryBudgets } = useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
+
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Animate header
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Animate content
+    Animated.timing(contentAnim, {
+      toValue: 1,
+      duration: 600,
+      delay: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleAddCategory = async () => {
     const trimmed = newCategory.trim();
@@ -89,58 +122,141 @@ const ManageCategoriesScreen = () => {
   };
 
   const renderCategory = ({ item }) => (
-    <View style={[styles.categoryRow, { backgroundColor: theme.card }]}>
-      <Text style={{ color: theme.text, fontSize: 16 }}>{item}</Text>
-      {!defaultCategories.includes(item) && (
-        <TouchableOpacity onPress={() => handleDeleteCategory(item)}>
-          <Text style={{ color: theme.error, fontSize: 14 }}>Delete</Text>
-        </TouchableOpacity>
-      )}
+    <View
+      style={[
+        styles.categoryCard,
+        {
+          backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+          shadowColor: theme.text,
+        },
+      ]}
+    >
+      <View style={styles.categoryContent}>
+        <Text style={[styles.categoryText, { color: theme.text }]}>{item}</Text>
+        {!defaultCategories.includes(item) && (
+          <TouchableOpacity
+            onPress={() => handleDeleteCategory(item)}
+            style={styles.deleteButton}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.deleteText}>Delete</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
+  );
+
+  const renderHeader = () => (
+    <Animated.View
+      style={[
+        styles.header,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
+      <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+        Welcome to
+      </Text>
+      <Text style={[styles.appName, { color: theme.text }]}>
+        <Text style={styles.zennyAccent}>Categories</Text>
+      </Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+        Manage your expense categories
+      </Text>
+    </Animated.View>
+  );
+
+  const renderAddSection = () => (
+    <Animated.View
+      style={[
+        styles.addSection,
+        {
+          opacity: contentAnim,
+          transform: [
+            {
+              translateY: contentAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <TextInput
+        placeholder="Add new category..."
+        placeholderTextColor={theme.textSecondary}
+        value={newCategory}
+        onChangeText={setNewCategory}
+        style={[
+          styles.input,
+          {
+            borderColor: theme.textSecondary + "30",
+            color: theme.text,
+            backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+            shadowColor: theme.text,
+          },
+        ]}
+      />
+
+      <TouchableOpacity
+        onPress={handleAddCategory}
+        style={[
+          styles.addButton,
+          {
+            backgroundColor: "#4CAF50",
+          },
+        ]}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.addButtonText}>➕ Add Category</Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Text style={[styles.title, { color: theme.text }]}>
-        Manage Categories
-      </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderHeader()}
+        {renderAddSection()}
 
-      <View style={styles.inputSection}>
-        <TextInput
-          placeholder="Add new category"
-          placeholderTextColor={theme.placeholder}
-          value={newCategory}
-          onChangeText={setNewCategory}
-          style={[
-            styles.input,
-            {
-              borderColor: theme.border,
-              color: theme.text,
-              backgroundColor: theme.input,
-            },
-          ]}
-        />
-
-        <TouchableOpacity
-          onPress={handleAddCategory}
-          style={[styles.button, { backgroundColor: theme.primary }]}
-        >
-          <Text
-            style={{ color: theme.buttonText, fontSize: 16, fontWeight: "600" }}
-          >
-            ➕ Add Category
+        <View style={styles.categoriesContainer}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Your Categories
           </Text>
-        </TouchableOpacity>
-      </View>
+          {categories.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateIcon}>🏷️</Text>
+              <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
+                No categories yet
+              </Text>
+              <Text
+                style={[styles.emptyStateText, { color: theme.textSecondary }]}
+              >
+                Add your first category above to get started
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={categories}
+              keyExtractor={(item) => item}
+              renderItem={renderCategory}
+              scrollEnabled={false}
+              contentContainerStyle={styles.categoriesList}
+            />
+          )}
+        </View>
 
-      <FlatList
-        data={categories}
-        keyExtractor={(item) => item}
-        renderItem={renderCategory}
-        contentContainerStyle={{ paddingTop: 10 }}
-      />
+        <View style={styles.bottomSpacing} />
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -148,37 +264,147 @@ const ManageCategoriesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: spacing.screen,
+  },
+  header: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingTop: 20,
+  },
+  welcomeText: {
+    fontSize: 16,
+    fontWeight: "400",
+    marginBottom: 8,
+  },
+  appName: {
+    fontSize: 36,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  zennyAccent: {
+    color: "#4CAF50",
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: "400",
     textAlign: "center",
   },
-  inputSection: {
-    marginBottom: 30,
+  addSection: {
+    marginBottom: 32,
   },
   input: {
     borderWidth: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
     borderRadius: radius.medium,
+    padding: 16,
     fontSize: 16,
-    marginBottom: 12,
+    fontWeight: "600",
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  button: {
-    paddingVertical: 14,
+  addButton: {
+    paddingVertical: 16,
     borderRadius: radius.medium,
     alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  categoryRow: {
+  addButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  categoriesContainer: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 16,
+    marginLeft: 4,
+  },
+  categoriesList: {
+    paddingBottom: 20,
+  },
+  categoryCard: {
+    borderRadius: radius.large,
+    padding: 16,
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  categoryContent: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: radius.medium,
-    marginBottom: 12,
+    alignItems: "center",
+  },
+  categoryText: {
+    fontSize: 16,
+    fontWeight: "600",
+    flex: 1,
+  },
+  deleteButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.small,
+    backgroundColor: "#FF3B30",
+  },
+  deleteText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 40,
+  },
+  emptyStateIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptyStateText: {
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  bottomSpacing: {
+    height: 40,
   },
 });
 

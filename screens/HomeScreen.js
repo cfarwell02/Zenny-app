@@ -22,168 +22,165 @@ const HomeScreen = ({ navigation }) => {
   const theme = darkMode ? darkTheme : lightTheme;
 
   // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const buttonAnims = useRef(
-    [...Array(7)].map(() => new Animated.Value(0))
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const cardAnims = useRef(
+    [...Array(6)].map(() => new Animated.Value(0))
   ).current;
 
   useEffect(() => {
     // Animate header
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    Animated.timing(headerAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
 
-    // Animate buttons with stagger
-    const buttonAnimations = buttonAnims.map((anim, index) =>
+    // Animate cards with stagger
+    const cardAnimations = cardAnims.map((anim, index) =>
       Animated.timing(anim, {
         toValue: 1,
         duration: 500,
-        delay: index * 100,
+        delay: index * 200,
         useNativeDriver: true,
       })
     );
 
-    Animated.stagger(100, buttonAnimations).start();
+    Animated.stagger(200, cardAnimations).start();
   }, []);
 
   const menuItems = [
     {
-      label: "View Receipts",
+      label: "Receipts",
       screen: "Saved Receipts",
-      icon: "🧾",
-      color: "#FF6B6B",
-      gradient: ["#FF6B6B", "#FF8E8E"],
+      icon: "📄",
+      description: "View your saved receipts",
+      color: "#6366f1",
     },
     {
       label: "Add Receipt",
       screen: "Add Receipt",
       icon: "➕",
-      color: "#4ECDC4",
-      gradient: ["#4ECDC4", "#6EE7DF"],
+      description: "Scan and save new receipts",
+      color: "#10b981",
     },
     {
-      label: "Budgets",
+      label: "My Budget",
       screen: "My Budget",
       icon: "💰",
-      color: "#45B7D1",
-      gradient: ["#45B7D1", "#6BC5E0"],
+      description: "Track your spending limits",
+      color: "#f59e0b",
     },
     {
       label: "Statistics",
       screen: "Statistics",
+      description: "View spending analytics",
       icon: "📊",
-      color: "#F39C12",
-      gradient: ["#F39C12", "#F7B932"],
+      color: "#ef4444",
     },
     {
-      label: "Income Tracker",
+      label: "Income",
       screen: "Income",
       icon: "💼",
-      color: "#8E44AD",
-      gradient: ["#8E44AD", "#A569BD"],
+      description: "Manage your income sources",
+      color: "#8b5cf6",
     },
     {
-      label: "Savings Goal",
+      label: "Savings",
       screen: "SavingsGoal",
       icon: "🎯",
-      color: "#E74C3C",
-      gradient: ["#E74C3C", "#EC7063"],
-    },
-    {
-      label: "Settings",
-      screen: "Settings",
-      icon: "⚙️",
-      color: "#95A5A6",
-      gradient: ["#95A5A6", "#B2BABB"],
+      description: "Set and track savings goals",
+      color: "#06b6d4",
     },
   ];
 
-  const renderQuickActions = () => {
-    const quickActions = menuItems.slice(0, 4);
-    return (
-      <View style={styles.quickActionsContainer}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Quick Actions
-        </Text>
-        <View style={styles.quickActionsGrid}>
-          {quickActions.map((item, index) => (
-            <Animated.View
-              key={item.screen}
-              style={[
-                styles.quickActionWrapper,
-                {
-                  opacity: buttonAnims[index],
-                  transform: [
-                    {
-                      translateY: buttonAnims[index].interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [20, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.quickActionButton,
-                  {
-                    backgroundColor: darkMode
-                      ? theme.cardBackground
-                      : "#FFFFFF",
-                    shadowColor: theme.text,
-                  },
-                ]}
-                onPress={() => navigation.navigate(item.screen)}
-                activeOpacity={0.8}
-              >
-                <View
-                  style={[
-                    styles.iconContainer,
-                    { backgroundColor: item.color },
-                  ]}
-                >
-                  <Text style={styles.quickActionIcon}>{item.icon}</Text>
-                </View>
-                <Text style={[styles.quickActionText, { color: theme.text }]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-          ))}
+  const renderHeader = () => (
+    <Animated.View
+      style={[
+        styles.header,
+        {
+          opacity: headerAnim,
+          transform: [
+            {
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-20, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.headerTop}>
+        <Text style={[styles.appName, { color: theme.text }]}>Zenny</Text>
+        <View style={styles.headerBadge}>
+          <Text style={styles.badgeText}>v1.0</Text>
         </View>
       </View>
-    );
-  };
+      <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+        Your personal finance dashboard
+      </Text>
+    </Animated.View>
+  );
 
-  const renderMainActions = () => {
-    const mainActions = menuItems.slice(4);
-    return (
-      <View style={styles.mainActionsContainer}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          More Options
+  const renderDashboardCard = () => (
+    <Animated.View
+      style={[
+        styles.dashboardCard,
+        {
+          backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+          opacity: cardAnims[0],
+          transform: [
+            {
+              scale: cardAnims[0].interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.9, 1],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.dashboardHeader}>
+        <Text style={[styles.dashboardTitle, { color: theme.text }]}>
+          Quick Overview
         </Text>
-        {mainActions.map((item, index) => (
+        <View style={styles.dashboardStats}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: "#10b981" }]}>$2,450</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              This Month
+            </Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: "#f59e0b" }]}>$1,200</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Budget Left
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+
+  const renderMenuGrid = () => (
+    <View style={styles.menuSection}>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        Manage Your Finances
+      </Text>
+      <View style={styles.menuGrid}>
+        {menuItems.map((item, index) => (
           <Animated.View
             key={item.screen}
             style={[
+              styles.menuItem,
               {
-                opacity: buttonAnims[index + 4],
+                opacity: cardAnims[index + 1],
                 transform: [
                   {
-                    translateY: buttonAnims[index + 4].interpolate({
+                    translateY: cardAnims[index + 1].interpolate({
                       inputRange: [0, 1],
-                      outputRange: [20, 0],
+                      outputRange: [30, 0],
                     }),
                   },
                 ],
@@ -192,7 +189,7 @@ const HomeScreen = ({ navigation }) => {
           >
             <TouchableOpacity
               style={[
-                styles.mainActionButton,
+                styles.menuCard,
                 {
                   backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
                   shadowColor: theme.text,
@@ -201,26 +198,78 @@ const HomeScreen = ({ navigation }) => {
               onPress={() => navigation.navigate(item.screen)}
               activeOpacity={0.8}
             >
-              <View
-                style={[
-                  styles.mainActionIconContainer,
-                  { backgroundColor: item.color },
-                ]}
-              >
-                <Text style={styles.mainActionIcon}>{item.icon}</Text>
+              <View style={[styles.menuIcon, { backgroundColor: item.color }]}>
+                <Text style={styles.iconText}>{item.icon}</Text>
               </View>
-              <Text style={[styles.mainActionText, { color: theme.text }]}>
+              <Text style={[styles.menuLabel, { color: theme.text }]}>
                 {item.label}
               </Text>
-              <Text style={[styles.chevron, { color: theme.textSecondary }]}>
-                ›
+              <Text
+                style={[styles.menuDescription, { color: theme.textSecondary }]}
+              >
+                {item.description}
               </Text>
             </TouchableOpacity>
           </Animated.View>
         ))}
       </View>
-    );
-  };
+    </View>
+  );
+
+  const renderQuickActions = () => (
+    <Animated.View
+      style={[
+        styles.quickActionsSection,
+        {
+          opacity: cardAnims[5],
+          transform: [
+            {
+              translateY: cardAnims[5].interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        Quick Actions
+      </Text>
+      <View style={styles.quickActionsRow}>
+        <TouchableOpacity
+          style={[
+            styles.quickActionButton,
+            {
+              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+              shadowColor: theme.text,
+            },
+          ]}
+          onPress={() => navigation.navigate("Add Receipt")}
+        >
+          <Text style={styles.quickActionIcon}>📷</Text>
+          <Text style={[styles.quickActionText, { color: theme.text }]}>
+            Scan Receipt
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.quickActionButton,
+            {
+              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+              shadowColor: theme.text,
+            },
+          ]}
+          onPress={() => navigation.navigate("My Budget")}
+        >
+          <Text style={styles.quickActionIcon}>📊</Text>
+          <Text style={[styles.quickActionText, { color: theme.text }]}>
+            View Budget
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
 
   return (
     <SafeAreaView
@@ -231,34 +280,10 @@ const HomeScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Animated.View
-          style={[
-            styles.header,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-            Welcome back to
-          </Text>
-          <Text style={[styles.appName, { color: theme.text }]}>
-            <Text style={styles.zennyAccent}>Zenny</Text>
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Manage your finances with ease
-          </Text>
-        </Animated.View>
-
-        {/* Quick Actions Grid */}
+        {renderHeader()}
+        {renderDashboardCard()}
+        {renderMenuGrid()}
         {renderQuickActions()}
-
-        {/* Main Actions List */}
-        {renderMainActions()}
-
-        {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
@@ -276,52 +301,101 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
   },
   header: {
-    alignItems: "center",
-    paddingVertical: 40,
-    paddingTop: 20,
+    paddingVertical: 24,
+    marginBottom: 16,
   },
-  welcomeText: {
-    fontSize: 16,
-    fontWeight: "400",
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   appName: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: "800",
-    marginBottom: 8,
   },
-  zennyAccent: {
-    color: "#4CAF50",
+  headerBadge: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  subtitle: {
-    fontSize: 14,
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  headerSubtitle: {
+    fontSize: 16,
     fontWeight: "400",
-    textAlign: "center",
+  },
+  dashboardCard: {
+    padding: 20,
+    borderRadius: radius.large,
+    marginBottom: 24,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  dashboardHeader: {
+    marginBottom: 16,
+  },
+  dashboardTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 16,
+  },
+  dashboardStats: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: "#E5E7EB",
+    marginHorizontal: 20,
+  },
+  menuSection: {
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 16,
-    marginLeft: 4,
   },
-  quickActionsContainer: {
-    marginBottom: 32,
-  },
-  quickActionsGrid: {
+  menuGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  quickActionWrapper: {
+  menuItem: {
     width: "48%",
     marginBottom: 16,
   },
-  quickActionButton: {
-    padding: 20,
-    borderRadius: radius.large,
+  menuCard: {
+    padding: 16,
+    borderRadius: radius.medium,
     alignItems: "center",
-    justifyContent: "center",
-    minHeight: 120,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 4 },
@@ -333,7 +407,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  iconContainer: {
+  menuIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -341,23 +415,34 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
-  quickActionIcon: {
+  iconText: {
     fontSize: 24,
   },
-  quickActionText: {
-    fontSize: 14,
+  menuLabel: {
+    fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
+    marginBottom: 4,
   },
-  mainActionsContainer: {
+  menuDescription: {
+    fontSize: 12,
+    fontWeight: "400",
+    textAlign: "center",
+    lineHeight: 16,
+  },
+  quickActionsSection: {
     marginBottom: 24,
   },
-  mainActionButton: {
+  quickActionsRow: {
     flexDirection: "row",
-    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  quickActionButton: {
+    flex: 1,
     padding: 16,
     borderRadius: radius.medium,
-    marginBottom: 12,
+    alignItems: "center",
+    marginHorizontal: 4,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 2 },
@@ -369,25 +454,14 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  mainActionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
+  quickActionIcon: {
+    fontSize: 24,
+    marginBottom: 8,
   },
-  mainActionIcon: {
-    fontSize: 20,
-  },
-  mainActionText: {
-    flex: 1,
-    fontSize: 16,
+  quickActionText: {
+    fontSize: 14,
     fontWeight: "600",
-  },
-  chevron: {
-    fontSize: 20,
-    fontWeight: "300",
+    textAlign: "center",
   },
   bottomSpacing: {
     height: 40,

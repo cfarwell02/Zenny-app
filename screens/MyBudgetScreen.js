@@ -241,7 +241,7 @@ const MyBudgetScreen = ({ navigation }) => {
     ];
 
     return (
-      <View style={styles.actionButtonsContainer}>
+      <>
         {actions.map((action, index) => (
           <TouchableOpacity
             key={action.screen}
@@ -271,7 +271,7 @@ const MyBudgetScreen = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </>
     );
   };
 
@@ -294,13 +294,21 @@ const MyBudgetScreen = ({ navigation }) => {
             },
           ]}
         >
-          <Text style={[styles.headerTitle, { color: theme.text }]}>
-            💰 My Budgets
+          <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+            Welcome to your
           </Text>
-          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+          <Text style={[styles.appName, { color: theme.text }]}>
+            <Text style={styles.zennyAccent}>Budgets</Text>
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             Track your spending and stay on budget
           </Text>
         </Animated.View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtonsContainer}>
+          {renderActionButtons()}
+        </View>
 
         {/* Budget Cards */}
         <View style={styles.budgetContainer}>
@@ -323,9 +331,6 @@ const MyBudgetScreen = ({ navigation }) => {
           )}
         </View>
 
-        {/* Action Buttons */}
-        {renderActionButtons()}
-
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -345,26 +350,34 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    paddingVertical: 40,
-    paddingTop: 20,
+    paddingVertical: 24,
+    paddingTop: 16,
   },
-  headerTitle: {
-    fontSize: 28,
+  welcomeText: {
+    fontSize: 16,
+    fontWeight: "400",
+    marginBottom: 8,
+  },
+  appName: {
+    fontSize: 32,
     fontWeight: "800",
     marginBottom: 8,
   },
-  headerSubtitle: {
-    fontSize: 16,
+  zennyAccent: {
+    color: "#4CAF50",
+  },
+  subtitle: {
+    fontSize: 14,
     fontWeight: "400",
     textAlign: "center",
   },
   budgetContainer: {
-    marginBottom: 32,
+    marginBottom: 16,
   },
   budgetCard: {
     borderRadius: radius.large,
-    padding: 20,
-    marginBottom: 16,
+    padding: 14,
+    marginBottom: 10,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 4 },
@@ -441,14 +454,14 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   actionButtonsContainer: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 10,
     borderRadius: radius.medium,
-    marginBottom: 12,
+    marginBottom: 6,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 2 },
@@ -461,19 +474,19 @@ const styles = StyleSheet.create({
     }),
   },
   actionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
+    marginRight: 12,
   },
   actionIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   actionText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
   },
   chevron: {
@@ -482,7 +495,7 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: "center",
-    paddingVertical: 60,
+    paddingVertical: 40,
     paddingHorizontal: 40,
   },
   emptyStateIcon: {

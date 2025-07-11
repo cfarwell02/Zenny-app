@@ -1,14 +1,15 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TextInput,
-  Button,
   StyleSheet,
   TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DropDownPicker from "react-native-dropdown-picker";
@@ -16,6 +17,8 @@ import { BudgetContext } from "../context/BudgetContext";
 import { CategoryContext } from "../context/CategoryContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
+import { radius } from "../constants/radius";
+import { spacing } from "../constants/spacing";
 
 const ManageBudgetScreen = ({ navigation }) => {
   const { categoryBudgets, updateCategoryBudget } = useContext(BudgetContext);
@@ -28,6 +31,11 @@ const ManageBudgetScreen = ({ navigation }) => {
   const [items, setItems] = useState([]);
   const [newAmount, setNewAmount] = useState("");
 
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     const updatedItems = categories.map((category) => ({
       label: category,
@@ -35,6 +43,30 @@ const ManageBudgetScreen = ({ navigation }) => {
     }));
     setItems(updatedItems);
   }, [categories]);
+
+  useEffect(() => {
+    // Animate header
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Animate content
+    Animated.timing(contentAnim, {
+      toValue: 1,
+      duration: 600,
+      delay: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleSave = async () => {
     if (!selectedCategory) {
@@ -63,21 +95,53 @@ const ManageBudgetScreen = ({ navigation }) => {
     }
   };
 
-  return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.background }]}
+  const renderHeader = () => (
+    <Animated.View
+      style={[
+        styles.header,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.container}
-      >
-        <Text style={[styles.title, { color: theme.text }]}>
-          Manage Budgets
+      <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+        Welcome to
+      </Text>
+      <Text style={[styles.appName, { color: theme.text }]}>
+        <Text style={styles.zennyAccent}>Budgets</Text>
+      </Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+        Set and manage your spending limits
+      </Text>
+    </Animated.View>
+  );
+
+  const renderForm = () => (
+    <Animated.View
+      style={[
+        styles.formContainer,
+        {
+          opacity: contentAnim,
+          transform: [
+            {
+              translateY: contentAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.formCard}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Set Budget
         </Text>
 
         <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: theme.text }]}>
-            Select Category:
+          <Text style={[styles.label, { color: theme.textSecondary }]}>
+            Select Category
           </Text>
 
           <DropDownPicker
@@ -96,131 +160,222 @@ const ManageBudgetScreen = ({ navigation }) => {
             style={[
               styles.dropdown,
               {
-                backgroundColor: theme.input,
-                borderColor: theme.border,
+                backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+                borderColor: theme.textSecondary + "30",
+                shadowColor: theme.text,
               },
             ]}
-            textStyle={{ color: theme.text }}
-            placeholderStyle={{ color: theme.placeholder }}
+            textStyle={{ color: theme.text, fontSize: 16 }}
+            placeholderStyle={{ color: theme.textSecondary }}
             dropDownContainerStyle={{
-              backgroundColor: theme.input,
-              borderColor: theme.border,
+              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+              borderColor: theme.textSecondary + "30",
               zIndex: 1000,
             }}
             itemSeparator={true}
-            itemSeparatorStyle={{ backgroundColor: theme.border }}
+            itemSeparatorStyle={{ backgroundColor: theme.textSecondary + "20" }}
           />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: theme.text }]}>
-            Set Budget Amount ($):
+          <Text style={[styles.label, { color: theme.textSecondary }]}>
+            Budget Amount ($)
           </Text>
           <TextInput
             style={[
               styles.input,
               {
-                backgroundColor: theme.input,
-                borderColor: theme.border,
+                backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+                borderColor: theme.textSecondary + "30",
                 color: theme.text,
+                shadowColor: theme.text,
               },
             ]}
             value={newAmount}
             onChangeText={setNewAmount}
             keyboardType="numeric"
             placeholder="Enter budget amount"
-            placeholderTextColor={theme.placeholder}
+            placeholderTextColor={theme.textSecondary}
           />
         </View>
 
         {selectedCategory && (
-          <Text
-            style={[
-              styles.currentBudget,
-              { color: theme.subtleText || theme.text },
-            ]}
-          >
-            Current budget for {selectedCategory}: $
-            {categoryBudgets[selectedCategory]
-              ? categoryBudgets[selectedCategory].toFixed(2)
-              : "0.00"}
-          </Text>
+          <View style={styles.currentBudgetContainer}>
+            <Text
+              style={[styles.currentBudgetText, { color: theme.textSecondary }]}
+            >
+              Current budget for {selectedCategory}: $
+              {categoryBudgets[selectedCategory]
+                ? categoryBudgets[selectedCategory].toFixed(2)
+                : "0.00"}
+            </Text>
+          </View>
         )}
 
         <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: theme.primary }]}
+          style={[
+            styles.saveButton,
+            {
+              backgroundColor: "#4CAF50",
+            },
+          ]}
           onPress={handleSave}
+          activeOpacity={0.8}
         >
-          <Text style={[styles.saveText, { color: theme.buttonText }]}>
-            Save Budget
-          </Text>
+          <Text style={styles.saveButtonText}>💾 Save Budget</Text>
         </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
 
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={[styles.backButton, { color: theme.primary }]}>
-            ← Back to Budget Overview
-          </Text>
-        </TouchableOpacity>
+  return (
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderHeader()}
+          {renderForm()}
+
+          <View style={styles.bottomSpacing} />
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
   container: {
     flex: 1,
-    padding: 20,
-    justifyContent: "flex-start",
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 24,
+  keyboardView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: spacing.screen,
+  },
+  header: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingTop: 20,
+  },
+  welcomeText: {
+    fontSize: 16,
+    fontWeight: "400",
+    marginBottom: 8,
+  },
+  appName: {
+    fontSize: 36,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  zennyAccent: {
+    color: "#4CAF50",
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: "400",
+    textAlign: "center",
+  },
+  formContainer: {
+    marginBottom: 32,
+  },
+  formCard: {
+    borderRadius: radius.large,
+    padding: 24,
+    backgroundColor: "transparent",
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 20,
     textAlign: "center",
   },
   formGroup: {
     marginBottom: 20,
-    zIndex: 10, // Ensures dropdowns render above others
+    zIndex: 10,
   },
   label: {
     fontSize: 16,
-    marginBottom: 6,
-    fontWeight: "500",
+    marginBottom: 8,
+    fontWeight: "600",
   },
   dropdown: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: radius.medium,
     minHeight: 50,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   input: {
     borderWidth: 1,
-    padding: 12,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: radius.medium,
     fontSize: 16,
+    fontWeight: "600",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  currentBudget: {
+  currentBudgetContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+    paddingVertical: 12,
+    borderRadius: radius.medium,
+    backgroundColor: "rgba(76, 175, 80, 0.1)",
+  },
+  currentBudgetText: {
     fontSize: 14,
     fontStyle: "italic",
-    marginBottom: 20,
     textAlign: "center",
   },
   saveButton: {
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: radius.medium,
     alignItems: "center",
-    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  saveText: {
+  saveButtonText: {
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-  backButton: {
-    textAlign: "center",
-    fontSize: 16,
-    marginTop: 8,
+  bottomSpacing: {
+    height: 40,
   },
 });
 
