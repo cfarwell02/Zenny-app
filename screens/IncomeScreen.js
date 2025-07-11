@@ -34,18 +34,20 @@ import { lightTheme, darkTheme } from "../constants/themes";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
+import { IncomeContext } from "../context/IncomeContext";
 
 const { width } = Dimensions.get("window");
 
 const IncomeScreen = () => {
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const { incomeList, addIncome, deleteIncome, editIncome } =
+    useContext(IncomeContext);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState("");
   const [incomeType, setIncomeType] = useState("salary");
   const [frequency, setFrequency] = useState("monthly");
-  const [incomeList, setIncomeList] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editAmount, setEditAmount] = useState("");
   const [editSource, setEditSource] = useState("");
@@ -110,7 +112,7 @@ const IncomeScreen = () => {
     return numericValue;
   };
 
-  const addIncome = () => {
+  const handleAddIncome = () => {
     if (!amount.trim() || !source.trim()) {
       Alert.alert("Missing Info", "Please fill in all fields");
       return;
@@ -128,21 +130,21 @@ const IncomeScreen = () => {
       frequency,
       date: new Date().toISOString(),
     };
-    setIncomeList([newIncome, ...incomeList]);
+    addIncome(newIncome);
     setAmount("");
     setSource("");
     setShowAddModal(false);
     Alert.alert("🎉 Added!", "Your income was saved.");
   };
 
-  const deleteIncome = (id) => {
+  const handleDeleteIncome = (id) => {
     Alert.alert("Remove Entry", "Delete this income source?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          setIncomeList(incomeList.filter((item) => item.id !== id));
+          deleteIncome(id);
         },
       },
     ]);
@@ -158,13 +160,7 @@ const IncomeScreen = () => {
     if (!editAmount.trim() || !editSource.trim()) return;
     const numericAmount = parseFloat(editAmount);
     if (isNaN(numericAmount) || numericAmount <= 0) return;
-    setIncomeList(
-      incomeList.map((item) =>
-        item.id === editingId
-          ? { ...item, amount: numericAmount, source: editSource.trim() }
-          : item
-      )
-    );
+    editIncome(editingId, { amount: numericAmount, source: editSource.trim() });
     setEditingId(null);
     setEditAmount("");
     setEditSource("");
@@ -362,7 +358,7 @@ const IncomeScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => deleteIncome(item.id)}
+              onPress={() => handleDeleteIncome(item.id)}
               activeOpacity={0.8}
             >
               <Text style={styles.deleteButtonText}>🗑️</Text>
@@ -473,7 +469,7 @@ const IncomeScreen = () => {
 
         <TouchableOpacity
           style={[styles.primaryButton, { backgroundColor: "#4CAF50" }]}
-          onPress={addIncome}
+          onPress={handleAddIncome}
           activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>Save</Text>

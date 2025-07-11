@@ -10,6 +10,7 @@ export const lightTheme = {
   border: "#ccc",
   placeholder: "#999",
   success: "#34C759",
+  surface: "#fff", // Added for input backgrounds
 };
 
 export const darkTheme = {
@@ -24,4 +25,5 @@ export const darkTheme = {
   border: "#555",
   placeholder: "#aaa",
   success: "#34C759",
+  surface: "#222", // Added for input backgrounds
 };

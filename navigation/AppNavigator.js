@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import auth from "@react-native-firebase/auth";
+import { TouchableOpacity, Text } from "react-native";
 
 import HomeScreen from "../screens/HomeScreen";
 import AddReceiptScreen from "../screens/AddReceiptScreen";
@@ -49,7 +50,13 @@ const AppNavigator = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
         <>
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
           <Stack.Screen name="Saved Receipts" component={SavedReceiptsScreen} />
           <Stack.Screen name="Add Receipt" component={AddReceiptScreen} />
           <Stack.Screen name="My Budget" component={MyBudgetScreen} />

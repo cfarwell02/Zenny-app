@@ -31,6 +31,8 @@ const ManageCategoriesScreen = () => {
   const { receipts } = useContext(ReceiptContext);
   const { categories } = useContext(CategoryContext);
   const { cleanupDeletedCategoryBudgets } = useContext(BudgetContext);
+  const { categoryBudgets, setCategoryBudgets, updateCategoryBudget } =
+    useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
 
   // Animation values
@@ -121,6 +123,18 @@ const ManageCategoriesScreen = () => {
     }
   };
 
+  const handleThresholdChange = (category, value) => {
+    setCategoryBudgets((prev) => ({
+      ...prev,
+      [category]: {
+        ...(typeof prev[category] === "object"
+          ? prev[category]
+          : { amount: prev[category] || 0 }),
+        threshold: value,
+      },
+    }));
+  };
+
   const renderCategory = ({ item }) => (
     <View
       style={[
@@ -133,6 +147,34 @@ const ManageCategoriesScreen = () => {
     >
       <View style={styles.categoryContent}>
         <Text style={[styles.categoryText, { color: theme.text }]}>{item}</Text>
+        <View
+          style={{ flexDirection: "row", alignItems: "center", marginLeft: 8 }}
+        >
+          <Text style={{ color: theme.textSecondary, marginRight: 4 }}>
+            Threshold %:
+          </Text>
+          <TextInput
+            value={String(
+              (categoryBudgets[item] && categoryBudgets[item].threshold) || 80
+            )}
+            onChangeText={(val) =>
+              handleThresholdChange(item, val.replace(/[^0-9]/g, ""))
+            }
+            keyboardType="numeric"
+            style={{
+              width: 48,
+              height: 32,
+              borderWidth: 1,
+              borderColor: theme.textSecondary + "30",
+              borderRadius: 8,
+              color: theme.text,
+              backgroundColor: darkMode ? theme.cardBackground : "#fff",
+              textAlign: "center",
+              marginRight: 8,
+            }}
+            maxLength={3}
+          />
+        </View>
         {!defaultCategories.includes(item) && (
           <TouchableOpacity
             onPress={() => handleDeleteCategory(item)}
@@ -220,19 +262,14 @@ const ManageCategoriesScreen = () => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {renderHeader()}
-        {renderAddSection()}
-
-        <View style={styles.categoriesContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Your Categories
-          </Text>
-          {categories.length === 0 ? (
+      {categories.length === 0 ? (
+        <>
+          {renderHeader()}
+          {renderAddSection()}
+          <View style={styles.categoriesContainer}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Your Categories
+            </Text>
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateIcon}>🏷️</Text>
               <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
@@ -244,19 +281,30 @@ const ManageCategoriesScreen = () => {
                 Add your first category above to get started
               </Text>
             </View>
-          ) : (
-            <FlatList
-              data={categories}
-              keyExtractor={(item) => item}
-              renderItem={renderCategory}
-              scrollEnabled={false}
-              contentContainerStyle={styles.categoriesList}
-            />
-          )}
-        </View>
-
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
+          </View>
+          <View style={styles.bottomSpacing} />
+        </>
+      ) : (
+        <FlatList
+          data={categories}
+          keyExtractor={(item) => item}
+          renderItem={renderCategory}
+          ListHeaderComponent={
+            <>
+              {renderHeader()}
+              {renderAddSection()}
+              <View style={styles.categoriesContainer}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Your Categories
+                </Text>
+              </View>
+            </>
+          }
+          ListFooterComponent={<View style={styles.bottomSpacing} />}
+          contentContainerStyle={styles.categoriesList}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };

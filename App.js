@@ -9,6 +9,9 @@ import { NotificationProvider } from "./context/NotificationContext";
 import auth from "@react-native-firebase/auth";
 import { NavigationContainer } from "@react-navigation/native";
 import { CategoryProvider } from "./context/CategoryContext";
+import { IncomeProvider } from "./context/IncomeContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import AuthScreen from "./screens/AuthScreen";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -17,6 +20,18 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+function MainApp() {
+  const { user, initializing } = useAuth();
+  if (initializing) return null; // Or a loading spinner
+  return user ? (
+    <NavigationContainer>
+      <AppNavigator />
+    </NavigationContainer>
+  ) : (
+    <AuthScreen />
+  );
+}
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -37,9 +52,11 @@ export default function App() {
         <CategoryProvider>
           <BudgetProvider>
             <ReceiptProvider>
-              <NavigationContainer>
-                <AppNavigator />
-              </NavigationContainer>
+              <IncomeProvider>
+                <AuthProvider>
+                  <MainApp />
+                </AuthProvider>
+              </IncomeProvider>
             </ReceiptProvider>
           </BudgetProvider>
         </CategoryProvider>

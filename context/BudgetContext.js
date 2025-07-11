@@ -24,7 +24,12 @@ export const BudgetProvider = ({ children }) => {
   const updateCategoryBudget = (category, amount) => {
     setCategoryBudgets((prev) => ({
       ...prev,
-      [category]: amount,
+      [category]: {
+        ...(typeof prev[category] === "object"
+          ? prev[category]
+          : { threshold: 80, notified: false }),
+        amount,
+      },
     }));
   };
 
@@ -34,6 +39,26 @@ export const BudgetProvider = ({ children }) => {
       delete updated[categoryToDelete];
       return updated;
     });
+  };
+
+  const checkAndNotifyThreshold = (category, spent) => {
+    const catBudget = categoryBudgets[category];
+    if (!catBudget || !catBudget.amount) return;
+    const threshold = Number(catBudget.threshold) || 80;
+    const notified = catBudget.notified;
+    const percentSpent = (spent / catBudget.amount) * 100;
+    if (percentSpent >= threshold && !notified) {
+      // Trigger notification (implementation in screen)
+      setCategoryBudgets((prev) => ({
+        ...prev,
+        [category]: {
+          ...catBudget,
+          notified: true,
+        },
+      }));
+      return true;
+    }
+    return false;
   };
 
   useEffect(() => {
@@ -66,6 +91,7 @@ export const BudgetProvider = ({ children }) => {
         addExpense,
         cleanupDeletedCategoryBudgets,
         removeExpense,
+        checkAndNotifyThreshold,
       }}
     >
       {children}

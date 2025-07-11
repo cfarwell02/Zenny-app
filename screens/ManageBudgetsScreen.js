@@ -10,6 +10,7 @@ import {
   Platform,
   Animated,
   ScrollView,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DropDownPicker from "react-native-dropdown-picker";
@@ -19,9 +20,11 @@ import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
+import { Picker } from "@react-native-picker/picker";
 
 const ManageBudgetScreen = ({ navigation }) => {
-  const { categoryBudgets, updateCategoryBudget } = useContext(BudgetContext);
+  const { categoryBudgets, updateCategoryBudget, setCategoryBudgets } =
+    useContext(BudgetContext);
   const { categories } = useContext(CategoryContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
@@ -30,6 +33,7 @@ const ManageBudgetScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [items, setItems] = useState([]);
   const [newAmount, setNewAmount] = useState("");
+  const [threshold, setThreshold] = useState("");
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -68,6 +72,20 @@ const ManageBudgetScreen = ({ navigation }) => {
     }).start();
   }, []);
 
+  useEffect(() => {
+    if (selectedCategory) {
+      const cat = categoryBudgets[selectedCategory];
+      setNewAmount(
+        cat && typeof cat === "object"
+          ? String(cat.amount ?? "")
+          : String(cat ?? "")
+      );
+      setThreshold(
+        cat && typeof cat === "object" ? String(cat.threshold ?? "80") : "80"
+      );
+    }
+  }, [selectedCategory, categoryBudgets]);
+
   const handleSave = async () => {
     if (!selectedCategory) {
       Alert.alert("Missing Info", "Please select a category.");
@@ -79,16 +97,39 @@ const ManageBudgetScreen = ({ navigation }) => {
       return;
     }
 
+    if (
+      !threshold ||
+      isNaN(Number(threshold)) ||
+      Number(threshold) < 1 ||
+      Number(threshold) > 100
+    ) {
+      Alert.alert(
+        "Invalid Threshold",
+        "Please enter a valid threshold percentage (1-100)."
+      );
+      return;
+    }
+
     try {
-      updateCategoryBudget(selectedCategory, Number(newAmount));
+      setCategoryBudgets((prev) => ({
+        ...prev,
+        [selectedCategory]: {
+          ...(typeof prev[selectedCategory] === "object"
+            ? prev[selectedCategory]
+            : { amount: prev[selectedCategory] || 0 }),
+          amount: Number(newAmount),
+          threshold: Number(threshold),
+        },
+      }));
 
       Alert.alert(
         "Saved",
-        `Updated budget for ${selectedCategory}: $${newAmount}`
+        `Updated budget for ${selectedCategory}: $${newAmount} (Threshold: ${threshold}%)`
       );
 
       setSelectedCategory("");
       setNewAmount("");
+      setThreshold("");
     } catch (error) {
       console.error("Error saving budget:", error);
       Alert.alert("Error", "Failed to save budget. Please try again.");
@@ -143,38 +184,26 @@ const ManageBudgetScreen = ({ navigation }) => {
           <Text style={[styles.label, { color: theme.textSecondary }]}>
             Select Category
           </Text>
-
-          <DropDownPicker
-            open={open}
-            value={selectedCategory}
-            items={items}
-            setOpen={setOpen}
-            setValue={setSelectedCategory}
-            setItems={setItems}
-            onChangeValue={(value) => {
-              setSelectedCategory(value);
-              const existingBudget = categoryBudgets[value];
-              setNewAmount(existingBudget ? existingBudget.toString() : "");
-            }}
-            placeholder="Choose a category..."
+          <View
             style={[
-              styles.dropdown,
+              styles.pickerContainer,
               {
-                backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-                borderColor: theme.textSecondary + "30",
-                shadowColor: theme.text,
+                backgroundColor: theme.input,
+                borderColor: theme.border,
               },
             ]}
-            textStyle={{ color: theme.text, fontSize: 16 }}
-            placeholderStyle={{ color: theme.textSecondary }}
-            dropDownContainerStyle={{
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              borderColor: theme.textSecondary + "30",
-              zIndex: 1000,
-            }}
-            itemSeparator={true}
-            itemSeparatorStyle={{ backgroundColor: theme.textSecondary + "20" }}
-          />
+          >
+            <Picker
+              selectedValue={selectedCategory}
+              onValueChange={(itemValue) => setSelectedCategory(itemValue)}
+              style={[{ color: theme.text, height: 50 }]}
+            >
+              <Picker.Item label="Choose a category..." value="" />
+              {categories.map((category) => (
+                <Picker.Item key={category} label={category} value={category} />
+              ))}
+            </Picker>
+          </View>
         </View>
 
         <View style={styles.formGroup}>
@@ -199,6 +228,29 @@ const ManageBudgetScreen = ({ navigation }) => {
           />
         </View>
 
+        <View style={styles.formGroup}>
+          <Text style={[styles.label, { color: theme.textSecondary }]}>
+            Threshold (%)
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+                borderColor: theme.textSecondary + "30",
+                color: theme.text,
+                shadowColor: theme.text,
+              },
+            ]}
+            value={threshold}
+            onChangeText={setThreshold}
+            keyboardType="numeric"
+            placeholder="Enter threshold percent"
+            placeholderTextColor={theme.textSecondary}
+            maxLength={3}
+          />
+        </View>
+
         {selectedCategory && (
           <View style={styles.currentBudgetContainer}>
             <Text
@@ -206,7 +258,9 @@ const ManageBudgetScreen = ({ navigation }) => {
             >
               Current budget for {selectedCategory}: $
               {categoryBudgets[selectedCategory]
-                ? categoryBudgets[selectedCategory].toFixed(2)
+                ? typeof categoryBudgets[selectedCategory] === "object"
+                  ? (categoryBudgets[selectedCategory].amount ?? 0).toFixed(2)
+                  : Number(categoryBudgets[selectedCategory]).toFixed(2)
                 : "0.00"}
             </Text>
           </View>
@@ -376,6 +430,11 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderRadius: radius.medium,
+    overflow: "hidden",
   },
 });
 

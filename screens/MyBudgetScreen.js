@@ -99,7 +99,11 @@ const MyBudgetScreen = ({ navigation }) => {
   };
 
   const renderBudgetCard = (category, index) => {
-    const budget = categoryBudgets[category] || 0;
+    const budgetObj = categoryBudgets[category];
+    const budget =
+      budgetObj && typeof budgetObj === "object"
+        ? budgetObj.amount
+        : budgetObj || 0;
     const spent = categorySpent[category] || 0;
     const remaining = budget - spent;
     const progressColor = getProgressColor(spent, budget);
@@ -376,8 +380,8 @@ const styles = StyleSheet.create({
   },
   budgetCard: {
     borderRadius: radius.large,
-    padding: 14,
-    marginBottom: 10,
+    padding: 6,
+    marginBottom: 6,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 4 },

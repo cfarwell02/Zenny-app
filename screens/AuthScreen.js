@@ -16,6 +16,7 @@ import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import auth from "@react-native-firebase/auth";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { Ionicons } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
@@ -26,6 +27,7 @@ const AuthScreen = ({ onAuthSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Make theme optional to avoid potential context issues
   const themeContext = useContext(ThemeContext);
@@ -72,6 +74,19 @@ const AuthScreen = ({ onAuthSuccess }) => {
       Alert.alert("Auth Error", err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert("Forgot Password", "Please enter your email address first.");
+      return;
+    }
+    try {
+      await auth().sendPasswordResetEmail(email);
+      Alert.alert("Password Reset", "A password reset email has been sent.");
+    } catch (err) {
+      Alert.alert("Error", err.message);
     }
   };
 
@@ -155,18 +170,64 @@ const AuthScreen = ({ onAuthSuccess }) => {
               />
             </View>
 
-            <View style={styles.inputContainer}>
+            <View
+              style={{
+                position: "relative",
+                height: 56,
+                alignItems: "center",
+                width: "100%",
+              }}
+            >
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Password"
                 placeholderTextColor={theme?.textSecondary || "#999"}
-                secureTextEntry
-                style={[styles.input, passwordFocused && styles.inputFocused]}
+                secureTextEntry={!showPassword}
+                style={[
+                  styles.input,
+                  passwordFocused && styles.inputFocused,
+                  { width: "100%" },
+                ]}
                 onFocus={() => setPasswordFocused(true)}
                 onBlur={() => setPasswordFocused(false)}
               />
+              <TouchableOpacity
+                onPress={() => setShowPassword((prev) => !prev)}
+                style={{ position: "absolute", right: 16, top: 16 }}
+                accessibilityLabel={
+                  showPassword ? "Hide password" : "Show password"
+                }
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={24}
+                  color={theme?.textSecondary || "#888"}
+                />
+              </TouchableOpacity>
             </View>
+
+            {/* Forgot Password Link (only when signing in) */}
+            {!isSigningUp && (
+              <TouchableOpacity
+                onPress={handleForgotPassword}
+                style={{
+                  alignSelf: "flex-start",
+                  marginBottom: 12,
+                  paddingTop: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: theme?.primary || "#4D90FE",
+                    fontSize: 14,
+                    fontWeight: "600",
+                  }}
+                >
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Primary Auth Button */}
             <TouchableOpacity
@@ -324,10 +385,9 @@ const createStyles = (theme) =>
       borderRadius: 12,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor:
-        theme?.googleButtonBg || (theme?.dark ? "#ffffff" : "#ffffff"),
+      backgroundColor: theme?.darkMode ? "#222" : "#fff",
       borderWidth: 1,
-      borderColor: theme?.border || "#E0E0E0",
+      borderColor: theme?.darkMode ? "#fff" : theme?.border || "#E0E0E0",
       shadowColor: "#000000",
       shadowOffset: {
         width: 0,

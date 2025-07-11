@@ -116,11 +116,19 @@ const SavedReceipts = () => {
           </View>
         )}
         <View style={styles.receiptInfo}>
-          <Text style={[styles.receiptAmount, { color: theme.text }]}>
+          <Text
+            style={[
+              styles.receiptAmount,
+              { color: darkMode ? "#fff" : theme.text },
+            ]}
+          >
             ${item.amount.toFixed(2)}
           </Text>
           <Text
-            style={[styles.receiptCategory, { color: theme.textSecondary }]}
+            style={[
+              styles.receiptCategory,
+              { color: darkMode ? "#fff" : theme.textSecondary },
+            ]}
           >
             {item.category}
           </Text>
@@ -195,10 +203,20 @@ const SavedReceipts = () => {
       ]}
     >
       <Text style={styles.emptyStateIcon}>🧾</Text>
-      <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
+      <Text
+        style={[
+          styles.emptyStateTitle,
+          { color: darkMode ? "#fff" : theme.text },
+        ]}
+      >
         No receipts yet
       </Text>
-      <Text style={[styles.emptyStateSubtitle, { color: theme.textSecondary }]}>
+      <Text
+        style={[
+          styles.emptyStateSubtitle,
+          { color: darkMode ? "#fff" : theme.textSecondary },
+        ]}
+      >
         When you add a receipt, it will show up here for easy tracking and
         filtering.
       </Text>
@@ -215,13 +233,23 @@ const SavedReceipts = () => {
         },
       ]}
     >
-      <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+      <Text
+        style={[
+          styles.welcomeText,
+          { color: darkMode ? "#fff" : theme.textSecondary },
+        ]}
+      >
         Welcome to your
       </Text>
-      <Text style={[styles.appName, { color: theme.text }]}>
+      <Text style={[styles.appName, { color: darkMode ? "#fff" : theme.text }]}>
         <Text style={styles.zennyAccent}>Receipts</Text>
       </Text>
-      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+      <Text
+        style={[
+          styles.subtitle,
+          { color: darkMode ? "#fff" : theme.textSecondary },
+        ]}
+      >
         Track and manage your expenses
       </Text>
     </Animated.View>
@@ -248,14 +276,14 @@ const SavedReceipts = () => {
       <View style={styles.searchContainer}>
         <TextInput
           placeholder="Search by tag..."
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={darkMode ? "#fff" : theme.textSecondary}
           value={searchTag}
           onChangeText={setSearchTag}
           style={[
             styles.searchInput,
             {
-              borderColor: theme.textSecondary + "30",
-              color: theme.text,
+              borderColor: darkMode ? "#fff" : theme.textSecondary + "30",
+              color: darkMode ? "#fff" : theme.text,
               backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
               shadowColor: theme.text,
             },
@@ -269,16 +297,16 @@ const SavedReceipts = () => {
           styles.pickerWrapper,
           {
             backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-            borderColor: theme.textSecondary + "30",
+            borderColor: darkMode ? "#fff" : theme.textSecondary + "30",
           },
         ]}
       >
         <Picker
           selectedValue={selectedCategory}
           onValueChange={(itemValue) => setSelectedCategory(itemValue)}
-          dropdownIconColor={theme.text}
+          dropdownIconColor={darkMode ? "#fff" : theme.text}
           style={{
-            color: theme.text,
+            color: darkMode ? "#fff" : theme.text,
             fontSize: 16,
           }}
         >
@@ -344,7 +372,7 @@ const SavedReceipts = () => {
                           <Text
                             style={[
                               styles.receiptAmount,
-                              { color: theme.text },
+                              { color: darkMode ? "#fff" : theme.text },
                             ]}
                           >
                             ${item.amount.toFixed(2)}
@@ -352,7 +380,9 @@ const SavedReceipts = () => {
                           <Text
                             style={[
                               styles.receiptCategory,
-                              { color: theme.textSecondary },
+                              {
+                                color: darkMode ? "#fff" : theme.textSecondary,
+                              },
                             ]}
                           >
                             {item.category}
@@ -373,7 +403,10 @@ const SavedReceipts = () => {
             ) : (
               <View style={styles.noResultsContainer}>
                 <Text
-                  style={[styles.noResultsText, { color: theme.textSecondary }]}
+                  style={[
+                    styles.noResultsText,
+                    { color: darkMode ? "#fff" : theme.textSecondary },
+                  ]}
                 >
                   No matching receipts found.
                 </Text>
@@ -422,7 +455,7 @@ const SavedReceipts = () => {
                         <Text
                           style={[
                             styles.modalNoImageText,
-                            { color: theme.textSecondary },
+                            { color: darkMode ? "#fff" : theme.textSecondary },
                           ]}
                         >
                           Image not available
@@ -431,13 +464,18 @@ const SavedReceipts = () => {
                     )}
 
                     <View style={styles.modalInfo}>
-                      <Text style={[styles.modalAmount, { color: theme.text }]}>
+                      <Text
+                        style={[
+                          styles.modalAmount,
+                          { color: darkMode ? "#fff" : theme.text },
+                        ]}
+                      >
                         ${selectedReceipt.amount.toFixed(2)}
                       </Text>
                       <Text
                         style={[
                           styles.modalCategory,
-                          { color: theme.textSecondary },
+                          { color: darkMode ? "#fff" : theme.textSecondary },
                         ]}
                       >
                         {selectedReceipt.category}
@@ -529,7 +567,7 @@ const SavedReceipts = () => {
                   <Text
                     style={[
                       styles.noResultsText,
-                      { color: theme.textSecondary },
+                      { color: darkMode ? "#fff" : theme.textSecondary },
                     ]}
                   >
                     No matching receipts found.
@@ -579,7 +617,7 @@ const SavedReceipts = () => {
                       <Text
                         style={[
                           styles.modalNoImageText,
-                          { color: theme.textSecondary },
+                          { color: darkMode ? "#fff" : theme.textSecondary },
                         ]}
                       >
                         Image not available
@@ -588,13 +626,18 @@ const SavedReceipts = () => {
                   )}
 
                   <View style={styles.modalInfo}>
-                    <Text style={[styles.modalAmount, { color: theme.text }]}>
+                    <Text
+                      style={[
+                        styles.modalAmount,
+                        { color: darkMode ? "#fff" : theme.text },
+                      ]}
+                    >
                       ${selectedReceipt.amount.toFixed(2)}
                     </Text>
                     <Text
                       style={[
                         styles.modalCategory,
-                        { color: theme.textSecondary },
+                        { color: darkMode ? "#fff" : theme.textSecondary },
                       ]}
                     >
                       {selectedReceipt.category}
