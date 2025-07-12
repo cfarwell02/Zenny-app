@@ -1,5 +1,6 @@
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import * as Print from "expo-print";
 import { Platform } from "react-native";
 
 // Format date for export
@@ -337,8 +338,281 @@ export const exportDataAsJSON = async (userData, currency = "USD") => {
   }
 };
 
+// Export data as PDF
+export const exportDataAsPDF = async (userData, currency = "USD") => {
+  try {
+    const timestamp = new Date().toISOString().split("T")[0];
+    const summary = generateSummaryReport(userData, currency);
+
+    // Create HTML content for PDF
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Zenny App - Financial Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .section { margin-bottom: 25px; }
+            .section-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #333; }
+            .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+            .summary-card { background: #f5f5f5; padding: 15px; border-radius: 8px; }
+            .summary-label { font-size: 12px; color: #666; margin-bottom: 5px; }
+            .summary-value { font-size: 16px; font-weight: bold; color: #333; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .receipt-row { background-color: #f9f9f9; }
+            .income-row { background-color: #e8f5e8; }
+            .budget-row { background-color: #fff3cd; }
+            .goal-row { background-color: #d1ecf1; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Zenny App - Financial Report</h1>
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            <p>Currency: ${currency}</p>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Financial Summary</div>
+            <div class="summary-grid">
+              <div class="summary-card">
+                <div class="summary-label">Total Receipts</div>
+                <div class="summary-value">${summary.totalReceipts}</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">Total Income</div>
+                <div class="summary-value">${summary.totalIncomes}</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">Total Spent</div>
+                <div class="summary-value">${
+                  summary.financialSummary.totalSpent
+                }</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">Net Savings</div>
+                <div class="summary-value">${
+                  summary.financialSummary.netSavings
+                }</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">Total Budget</div>
+                <div class="summary-value">${
+                  summary.financialSummary.totalBudget
+                }</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">Savings Progress</div>
+                <div class="summary-value">${
+                  summary.financialSummary.savingsProgress
+                }</div>
+              </div>
+            </div>
+          </div>
+
+          ${
+            userData.receipts && userData.receipts.length > 0
+              ? `
+          <div class="section">
+            <div class="section-title">Receipts</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Amount</th>
+                  <th>Description</th>
+                  <th>Store</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${userData.receipts
+                  .map(
+                    (receipt) => `
+                  <tr class="receipt-row">
+                    <td>${formatDate(receipt.date)}</td>
+                    <td>${receipt.category || ""}</td>
+                    <td>${formatCurrency(receipt.amount, currency)}</td>
+                    <td>${receipt.description || ""}</td>
+                    <td>${receipt.store || ""}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+          `
+              : ""
+          }
+
+          ${
+            userData.incomes && userData.incomes.length > 0
+              ? `
+          <div class="section">
+            <div class="section-title">Income</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Source</th>
+                  <th>Amount</th>
+                  <th>Frequency</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${userData.incomes
+                  .map(
+                    (income) => `
+                  <tr class="income-row">
+                    <td>${formatDate(income.date)}</td>
+                    <td>${income.source || ""}</td>
+                    <td>${formatCurrency(income.amount, currency)}</td>
+                    <td>${income.frequency || ""}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+          `
+              : ""
+          }
+
+          ${
+            userData.budgets && Object.keys(userData.budgets).length > 0
+              ? `
+          <div class="section">
+            <div class="section-title">Budgets</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Budget Amount</th>
+                  <th>Spent Amount</th>
+                  <th>Remaining</th>
+                  <th>Percentage Used</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${Object.entries(userData.budgets)
+                  .map(([category, budget]) => {
+                    const spent = budget.spent || 0;
+                    const amount = budget.amount || 0;
+                    const remaining = amount - spent;
+                    const percentage =
+                      amount > 0 ? ((spent / amount) * 100).toFixed(1) : 0;
+                    return `
+                    <tr class="budget-row">
+                      <td>${category}</td>
+                      <td>${formatCurrency(amount, currency)}</td>
+                      <td>${formatCurrency(spent, currency)}</td>
+                      <td>${formatCurrency(remaining, currency)}</td>
+                      <td>${percentage}%</td>
+                    </tr>
+                  `;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+          `
+              : ""
+          }
+
+          ${
+            userData.goals && userData.goals.length > 0
+              ? `
+          <div class="section">
+            <div class="section-title">Savings Goals</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Goal Name</th>
+                  <th>Target Amount</th>
+                  <th>Current Amount</th>
+                  <th>Remaining</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${userData.goals
+                  .map((goal) => {
+                    const remaining =
+                      (goal.targetAmount || 0) - (goal.currentAmount || 0);
+                    const status = remaining <= 0 ? "Completed" : "In Progress";
+                    return `
+                    <tr class="goal-row">
+                      <td>${goal.name || ""}</td>
+                      <td>${formatCurrency(goal.targetAmount, currency)}</td>
+                      <td>${formatCurrency(goal.currentAmount, currency)}</td>
+                      <td>${formatCurrency(remaining, currency)}</td>
+                      <td>${status}</td>
+                    </tr>
+                  `;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+          `
+              : ""
+          }
+        </body>
+      </html>
+    `;
+
+    const fileName = `zenny_report_${timestamp}.pdf`;
+    const filePath = `${FileSystem.documentDirectory}${fileName}`;
+
+    // Generate PDF
+    const { uri } = await Print.printToFileAsync({
+      html: htmlContent,
+      base64: false,
+    });
+
+    // Copy to our app's directory
+    await FileSystem.copyAsync({
+      from: uri,
+      to: filePath,
+    });
+
+    if (Platform.OS === "web") {
+      // For web, create a download link
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      return { success: true, fileName };
+    } else {
+      // For mobile, share the file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(filePath, {
+          mimeType: "application/pdf",
+          dialogTitle: "Export Financial Report",
+          UTI: "com.adobe.pdf",
+        });
+      }
+      return { success: true, fileName, filePath };
+    }
+  } catch (error) {
+    console.error("PDF Export error:", error);
+    throw new Error("Failed to export PDF");
+  }
+};
+
 // Get export options for the user
 export const getExportOptions = () => [
   { label: "CSV File (Excel compatible)", value: "csv" },
   { label: "JSON File (Full data backup)", value: "json" },
+  { label: "PDF Report (Professional format)", value: "pdf" },
 ];

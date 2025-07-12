@@ -13,6 +13,7 @@ import {
   ProgressChart,
 } from "react-native-chart-kit";
 import { useTheme } from "../context/ThemeContext";
+import { useCurrency } from "../context/CurrencyContext";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -141,6 +142,7 @@ export const MonthlySpendingTrend = ({ data, currency = "USD" }) => {
 // Enhanced Budget Progress Chart
 export const BudgetProgressChart = ({ data, currency = "USD" }) => {
   const { darkMode } = useTheme();
+  const { formatCurrency, convertCurrency } = useCurrency();
   const theme = darkMode
     ? { background: "#1a1a1a", text: "#ffffff", card: "#2a2a2a" }
     : { background: "#ffffff", text: "#000000", card: "#f5f5f5" };
@@ -167,8 +169,8 @@ export const BudgetProgressChart = ({ data, currency = "USD" }) => {
               {item.category}
             </Text>
             <Text style={[styles.budgetAmount, { color: theme.text }]}>
-              {currency} {item.spent.toFixed(2)} / {currency}{" "}
-              {item.budget.toFixed(2)}
+              {formatCurrency(convertCurrency(item.spent))} /{" "}
+              {formatCurrency(convertCurrency(item.budget))}
             </Text>
           </View>
           <View
@@ -197,6 +199,7 @@ export const BudgetProgressChart = ({ data, currency = "USD" }) => {
 // Enhanced Savings Goals Chart
 export const SavingsGoalsChart = ({ data, currency = "USD" }) => {
   const { darkMode } = useTheme();
+  const { formatCurrency, convertCurrency } = useCurrency();
   const theme = darkMode
     ? { background: "#1a1a1a", text: "#ffffff", card: "#2a2a2a" }
     : { background: "#ffffff", text: "#000000", card: "#f5f5f5" };
@@ -250,8 +253,8 @@ export const SavingsGoalsChart = ({ data, currency = "USD" }) => {
             {goal.name}
           </Text>
           <Text style={[styles.goalProgress, { color: theme.text }]}>
-            {currency} {goal.currentAmount.toFixed(2)} / {currency}{" "}
-            {goal.targetAmount.toFixed(2)}
+            {formatCurrency(convertCurrency(goal.currentAmount))} /{" "}
+            {formatCurrency(convertCurrency(goal.targetAmount))}
           </Text>
         </View>
       ))}
@@ -262,6 +265,7 @@ export const SavingsGoalsChart = ({ data, currency = "USD" }) => {
 // Interactive Spending Insights
 export const SpendingInsights = ({ data, currency = "USD" }) => {
   const { darkMode } = useTheme();
+  const { formatCurrency, convertCurrency } = useCurrency();
   const theme = darkMode
     ? { background: "#1a1a1a", text: "#ffffff", card: "#2a2a2a" }
     : { background: "#ffffff", text: "#000000", card: "#f5f5f5" };
@@ -290,7 +294,7 @@ export const SpendingInsights = ({ data, currency = "USD" }) => {
             Total Spent
           </Text>
           <Text style={[styles.insightValue, { color: "#4CAF50" }]}>
-            {currency} {data.totalSpent?.toFixed(2) || "0.00"}
+            {formatCurrency(convertCurrency(data.totalSpent || 0))}
           </Text>
         </View>
 
@@ -301,7 +305,7 @@ export const SpendingInsights = ({ data, currency = "USD" }) => {
             Average Daily
           </Text>
           <Text style={[styles.insightValue, { color: "#2196F3" }]}>
-            {currency} {data.averageDaily?.toFixed(2) || "0.00"}
+            {formatCurrency(convertCurrency(data.averageDaily || 0))}
           </Text>
         </View>
 

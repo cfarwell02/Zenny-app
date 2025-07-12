@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BudgetContext } from "../context/BudgetContext";
+import { ReceiptContext } from "../context/ReceiptContext";
 import { CategoryContext } from "../context/CategoryContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
@@ -22,13 +23,15 @@ const { width: screenWidth } = Dimensions.get("window");
 
 const MyBudgetScreen = ({ navigation }) => {
   const { categoryBudgets, expenses } = useContext(BudgetContext);
+  const { receipts } = useContext(ReceiptContext);
   const { categories } = useContext(CategoryContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
   const { formatCurrency, convertCurrency } = useCurrency();
 
+  // Use only receipts as the single source of truth
   const categorySpent = {};
-  expenses.forEach((e) => {
+  receipts.forEach((e) => {
     categorySpent[e.category] = (categorySpent[e.category] || 0) + e.amount;
   });
 
@@ -151,9 +154,7 @@ const MyBudgetScreen = ({ navigation }) => {
 
           {budget === 0 ? (
             <View style={styles.noBudgetContainer}>
-              <Text
-                style={[styles.noBudgetText, { color: theme.textSecondary }]}
-              >
+              <Text style={[styles.noBudgetText, { color: theme.subtleText }]}>
                 No budget set yet
               </Text>
               <Text style={[styles.spentAmount, { color: theme.text }]}>
@@ -165,7 +166,7 @@ const MyBudgetScreen = ({ navigation }) => {
               <View style={styles.amountContainer}>
                 <View style={styles.amountRow}>
                   <Text
-                    style={[styles.amountLabel, { color: theme.textSecondary }]}
+                    style={[styles.amountLabel, { color: theme.subtleText }]}
                   >
                     Budget
                   </Text>
@@ -175,7 +176,7 @@ const MyBudgetScreen = ({ navigation }) => {
                 </View>
                 <View style={styles.amountRow}>
                   <Text
-                    style={[styles.amountLabel, { color: theme.textSecondary }]}
+                    style={[styles.amountLabel, { color: theme.subtleText }]}
                   >
                     Spent
                   </Text>
@@ -185,7 +186,7 @@ const MyBudgetScreen = ({ navigation }) => {
                 </View>
                 <View style={styles.amountRow}>
                   <Text
-                    style={[styles.amountLabel, { color: theme.textSecondary }]}
+                    style={[styles.amountLabel, { color: theme.subtleText }]}
                   >
                     Remaining
                   </Text>
@@ -268,9 +269,7 @@ const MyBudgetScreen = ({ navigation }) => {
             <Text style={[styles.actionText, { color: theme.text }]}>
               {action.label}
             </Text>
-            <Text style={[styles.chevron, { color: theme.textSecondary }]}>
-              ›
-            </Text>
+            <Text style={[styles.chevron, { color: theme.subtleText }]}>›</Text>
           </TouchableOpacity>
         ))}
       </>
@@ -296,13 +295,13 @@ const MyBudgetScreen = ({ navigation }) => {
             },
           ]}
         >
-          <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+          <Text style={[styles.welcomeText, { color: theme.subtleText }]}>
             Welcome to your
           </Text>
           <Text style={[styles.appName, { color: theme.text }]}>
             <Text style={styles.zennyAccent}>Budgets</Text>
           </Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          <Text style={[styles.subtitle, { color: theme.subtleText }]}>
             Track your spending and stay on budget
           </Text>
         </Animated.View>
@@ -321,7 +320,7 @@ const MyBudgetScreen = ({ navigation }) => {
                 No budgets yet
               </Text>
               <Text
-                style={[styles.emptyStateText, { color: theme.textSecondary }]}
+                style={[styles.emptyStateText, { color: theme.subtleText }]}
               >
                 Start by adding a receipt or setting up your first budget
               </Text>

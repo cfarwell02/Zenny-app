@@ -54,7 +54,7 @@ const IncomeScreen = () => {
   const [editingId, setEditingId] = useState(null);
   const [editAmount, setEditAmount] = useState("");
   const [editSource, setEditSource] = useState("");
-  const [showAddModal, setShowAddModal] = useState(false);
+
   const [hideAmounts, setHideAmounts] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
 
@@ -136,7 +136,6 @@ const IncomeScreen = () => {
     addIncome(newIncome);
     setAmount("");
     setSource("");
-    setShowAddModal(false);
     Alert.alert("🎉 Added!", "Your income was saved.");
   };
 
@@ -220,13 +219,13 @@ const IncomeScreen = () => {
         },
       ]}
     >
-      <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+      <Text style={[styles.welcomeText, { color: theme.subtleText }]}>
         Welcome to your
       </Text>
       <Text style={[styles.appName, { color: theme.text }]}>
         <Text style={styles.zennyAccent}>Income</Text>
       </Text>
-      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+      <Text style={[styles.subtitle, { color: theme.subtleText }]}>
         Track and manage your income sources
       </Text>
     </Animated.View>
@@ -261,13 +260,13 @@ const IncomeScreen = () => {
           style={[
             styles.input,
             {
-              borderColor: theme.textSecondary + "30",
+              borderColor: theme.subtleText + "30",
               color: theme.text,
               backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
               shadowColor: theme.text,
             },
           ]}
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={theme.subtleText}
         />
 
         <TextInput
@@ -278,13 +277,13 @@ const IncomeScreen = () => {
           style={[
             styles.input,
             {
-              borderColor: theme.textSecondary + "30",
+              borderColor: theme.subtleText + "30",
               color: theme.text,
               backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
               shadowColor: theme.text,
             },
           ]}
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={theme.subtleText}
         />
 
         <TouchableOpacity
@@ -294,7 +293,7 @@ const IncomeScreen = () => {
               backgroundColor: "#4CAF50",
             },
           ]}
-          onPress={() => setShowAddModal(true)}
+          onPress={handleAddIncome}
           activeOpacity={0.8}
         >
           <Text style={styles.addButtonText}>💼 Add Income</Text>
@@ -335,16 +334,11 @@ const IncomeScreen = () => {
               </Text>
               <View style={styles.incomeMetadata}>
                 <Text
-                  style={[
-                    styles.incomeFrequency,
-                    { color: theme.textSecondary },
-                  ]}
+                  style={[styles.incomeFrequency, { color: theme.subtleText }]}
                 >
                   {item.frequency}
                 </Text>
-                <Text
-                  style={[styles.incomeDate, { color: theme.textSecondary }]}
-                >
+                <Text style={[styles.incomeDate, { color: theme.subtleText }]}>
                   {new Date(item.date).toLocaleDateString()}
                 </Text>
               </View>
@@ -377,12 +371,12 @@ const IncomeScreen = () => {
               style={[
                 styles.editInput,
                 {
-                  borderColor: theme.textSecondary + "30",
+                  borderColor: theme.subtleText + "30",
                   color: theme.text,
                   backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
                 },
               ]}
-              placeholderTextColor={theme.textSecondary}
+              placeholderTextColor={theme.subtleText}
             />
             <TextInput
               value={editAmount}
@@ -391,12 +385,12 @@ const IncomeScreen = () => {
               style={[
                 styles.editInput,
                 {
-                  borderColor: theme.textSecondary + "30",
+                  borderColor: theme.subtleText + "30",
                   color: theme.text,
                   backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
                 },
               ]}
-              placeholderTextColor={theme.textSecondary}
+              placeholderTextColor={theme.subtleText}
             />
             <View style={styles.editActions}>
               <TouchableOpacity
@@ -419,74 +413,6 @@ const IncomeScreen = () => {
       </View>
     );
   };
-
-  const renderAddModal = () => (
-    <Modal
-      visible={showAddModal}
-      animationType="slide"
-      onRequestClose={() => setShowAddModal(false)}
-    >
-      <StatusBar
-        barStyle={darkMode ? "light-content" : "dark-content"}
-        backgroundColor={theme.cardBackground}
-      />
-      <View
-        style={[styles.bottomSheet, { backgroundColor: theme.cardBackground }]}
-      >
-        <View style={styles.modalHeader}>
-          <Text style={[styles.modalTitle, { color: theme.text }]}>
-            Add Income Source
-          </Text>
-        </View>
-
-        <TextInput
-          placeholder="e.g. Paycheck"
-          placeholderTextColor={theme.textSecondary}
-          value={source}
-          onChangeText={setSource}
-          style={[
-            styles.inputField,
-            {
-              color: theme.text,
-              borderColor: theme.textSecondary + "30",
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-            },
-          ]}
-        />
-
-        <TextInput
-          placeholder="Amount"
-          placeholderTextColor={theme.textSecondary}
-          value={amount}
-          keyboardType="numeric"
-          onChangeText={(text) => setAmount(validateAmount(text))}
-          style={[
-            styles.inputField,
-            {
-              color: theme.text,
-              borderColor: theme.textSecondary + "30",
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-            },
-          ]}
-        />
-
-        <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: "#4CAF50" }]}
-          onPress={handleAddIncome}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.primaryButtonText}>Save</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setShowAddModal(false)}
-          style={styles.cancelButton}
-        >
-          <Text style={{ color: theme.textSecondary }}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
-  );
 
   const renderStatsModal = () => {
     const typeStats = getIncomeByType();
@@ -516,19 +442,19 @@ const IncomeScreen = () => {
 
           <View style={styles.totalIncomeContainer}>
             <Text
-              style={[styles.totalIncomeLabel, { color: theme.textSecondary }]}
+              style={[styles.totalIncomeLabel, { color: theme.subtleText }]}
             >
               Total Income
             </Text>
             <Text style={[styles.totalIncomeAmount, { color: "#4CAF50" }]}>
-              ${Math.round(totalIncome).toLocaleString()}
+              {formatCurrencyWithContext(convertCurrency(totalIncome))}
             </Text>
           </View>
 
           {Object.keys(typeStats).length === 0 ? (
             <View style={styles.emptyStats}>
               <Text
-                style={[styles.emptyStatsText, { color: theme.textSecondary }]}
+                style={[styles.emptyStatsText, { color: theme.subtleText }]}
               >
                 No income data available
               </Text>
@@ -541,7 +467,7 @@ const IncomeScreen = () => {
                     {type.charAt(0).toUpperCase() + type.slice(1)}
                   </Text>
                   <Text style={[styles.statValue, { color: theme.text }]}>
-                    ${Math.round(data.total).toLocaleString()}
+                    {formatCurrencyWithContext(convertCurrency(data.total))}
                   </Text>
                 </View>
               ))}
@@ -563,7 +489,7 @@ const IncomeScreen = () => {
             onPress={() => setShowStatsModal(false)}
             style={styles.cancelButton}
           >
-            <Text style={{ color: theme.textSecondary }}>Cancel</Text>
+            <Text style={{ color: theme.subtleText }}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -594,7 +520,7 @@ const IncomeScreen = () => {
                 No income sources yet
               </Text>
               <Text
-                style={[styles.emptyStateText, { color: theme.textSecondary }]}
+                style={[styles.emptyStateText, { color: theme.subtleText }]}
               >
                 Add your first income source above to get started
               </Text>
@@ -607,7 +533,6 @@ const IncomeScreen = () => {
         <View style={styles.bottomSpacing} />
       </ScrollView>
 
-      {renderAddModal()}
       {renderStatsModal()}
     </SafeAreaView>
   );

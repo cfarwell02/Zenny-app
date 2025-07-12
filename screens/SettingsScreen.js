@@ -26,6 +26,7 @@ import { DataContext } from "../context/DataContext";
 import {
   exportDataAsCSV,
   exportDataAsJSON,
+  exportDataAsPDF,
   getExportOptions,
 } from "../utils/exportData";
 import {
@@ -184,6 +185,8 @@ const SettingsScreen = () => {
         result = await exportDataAsCSV(userData, selectedCurrency);
       } else if (format === "json") {
         result = await exportDataAsJSON(userData, selectedCurrency);
+      } else if (format === "pdf") {
+        result = await exportDataAsPDF(userData, selectedCurrency);
       }
 
       if (result.success) {

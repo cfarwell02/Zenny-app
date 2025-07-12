@@ -27,6 +27,7 @@ import { DataContext } from "../context/DataContext";
 import {
   exportDataAsCSV,
   exportDataAsJSON,
+  exportDataAsPDF,
   getExportOptions,
 } from "../utils/exportData";
 import {
@@ -53,7 +54,8 @@ const HomeScreen = ({ navigation }) => {
 
   const { receipts } = useContext(ReceiptContext);
   const { incomeList } = useContext(IncomeContext);
-  const { checkAndNotifyThreshold } = useContext(BudgetContext);
+  const { checkAndNotifyThreshold, categoryBudgets } =
+    useContext(BudgetContext);
   const { notificationsEnabled } = useContext(NotificationContext);
 
   // Helper: get current month/year
@@ -163,19 +165,25 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     // Check thresholds for all categories
     if (!notificationsEnabled) return;
+
+    // Only check categories that have actual budgets set (amount > 0)
     Object.entries(categorySpent).forEach(([category, spent]) => {
-      const triggered = checkAndNotifyThreshold(category, spent);
-      if (triggered) {
-        Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Budget Alert",
-            body: `You have exceeded your threshold for ${category}!`,
-          },
-          trigger: null,
-        });
+      const catBudget = categoryBudgets[category];
+      // Only check if budget exists and has a positive amount
+      if (catBudget && catBudget.amount && catBudget.amount > 0) {
+        const triggered = checkAndNotifyThreshold(category, spent);
+        if (triggered) {
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Budget Alert",
+              body: `You have exceeded your threshold for ${category}!`,
+            },
+            trigger: null,
+          });
+        }
       }
     });
-  }, [receipts, notificationsEnabled]);
+  }, [receipts, notificationsEnabled, categoryBudgets]);
 
   const handleQuickExport = async () => {
     lightHaptic(); // Light haptic for button press
@@ -203,6 +211,8 @@ const HomeScreen = ({ navigation }) => {
         result = await exportDataAsCSV(userData, selectedCurrency);
       } else if (format === "json") {
         result = await exportDataAsJSON(userData, selectedCurrency);
+      } else if (format === "pdf") {
+        result = await exportDataAsPDF(userData, selectedCurrency);
       }
 
       if (result.success) {
@@ -286,15 +296,10 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.headerTop}>
         <Text style={[styles.appName, { color: theme.text }]}>Zenny</Text>
         <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
-          <Text style={{ fontSize: 20 }}>⚙️</Text>
+          <Text style={{ fontSize: 28 }}>⚙️</Text>
         </TouchableOpacity>
       </View>
-      <Text
-        style={[
-          styles.headerSubtitle,
-          { color: darkMode ? "#fff" : theme.textSecondary },
-        ]}
-      >
+      <Text style={[styles.headerSubtitle, { color: theme.subtleText }]}>
         Your personal finance dashboard
       </Text>
     </Animated.View>
@@ -317,12 +322,7 @@ const HomeScreen = ({ navigation }) => {
     >
       <View style={styles.balanceStats}>
         <View style={styles.statItem}>
-          <Text
-            style={[
-              styles.statLabel,
-              { color: darkMode ? "#fff" : theme.textSecondary },
-            ]}
-          >
+          <Text style={[styles.statLabel, { color: theme.subtleText }]}>
             This Month
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
@@ -331,12 +331,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text
-            style={[
-              styles.statLabel,
-              { color: darkMode ? "#fff" : theme.textSecondary },
-            ]}
-          >
+          <Text style={[styles.statLabel, { color: theme.subtleText }]}>
             Income
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
@@ -395,7 +390,7 @@ const HomeScreen = ({ navigation }) => {
       {recentActivity.length === 0 ? (
         <Text
           style={{
-            color: theme.textSecondary,
+            color: theme.subtleText,
             textAlign: "center",
             marginVertical: 16,
           }}
@@ -421,14 +416,17 @@ const HomeScreen = ({ navigation }) => {
               </View>
               <View style={styles.transactionInfo}>
                 <Text
-                  style={styles.transactionName}
+                  style={[styles.transactionName, { color: theme.text }]}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
                   {transaction.name}
                 </Text>
                 <Text
-                  style={styles.transactionCategory}
+                  style={[
+                    styles.transactionCategory,
+                    { color: theme.subtleText },
+                  ]}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
@@ -438,7 +436,7 @@ const HomeScreen = ({ navigation }) => {
               </View>
             </View>
             <Text
-              style={styles.transactionAmount}
+              style={[styles.transactionAmount, { color: theme.text }]}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
@@ -473,7 +471,7 @@ const HomeScreen = ({ navigation }) => {
       {topSpending.length === 0 ? (
         <Text
           style={{
-            color: theme.textSecondary,
+            color: theme.subtleText,
             textAlign: "center",
             marginVertical: 16,
           }}
@@ -489,20 +487,14 @@ const HomeScreen = ({ navigation }) => {
               />
               <View style={styles.categoryInfo}>
                 <Text
-                  style={[
-                    styles.categoryName,
-                    darkMode ? { color: "#fff" } : {},
-                  ]}
+                  style={[styles.categoryName, { color: theme.text }]}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
                   {cat.category}
                 </Text>
                 <Text
-                  style={[
-                    styles.categoryAmount,
-                    darkMode ? { color: "#fff" } : {},
-                  ]}
+                  style={[styles.categoryAmount, { color: theme.subtleText }]}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
@@ -566,7 +558,7 @@ const HomeScreen = ({ navigation }) => {
                 {item.label}
               </Text>
               <Text
-                style={[styles.menuDescription, { color: theme.textSecondary }]}
+                style={[styles.menuDescription, { color: theme.subtleText }]}
                 numberOfLines={2}
                 ellipsizeMode="tail"
               >
@@ -687,7 +679,7 @@ const HomeScreen = ({ navigation }) => {
       {recentActivity.length === 0 ? (
         <Text
           style={{
-            color: theme.textSecondary,
+            color: theme.subtleText,
             textAlign: "center",
             marginVertical: 16,
           }}
@@ -721,7 +713,7 @@ const HomeScreen = ({ navigation }) => {
               </Text>
               <Text
                 style={{
-                  color: darkMode ? "#fff" : theme.textSecondary,
+                  color: theme.subtleText,
                   fontSize: 12,
                 }}
                 numberOfLines={1}
@@ -1026,7 +1018,6 @@ const styles = StyleSheet.create({
   transactionCategory: {
     fontSize: 12,
     fontWeight: "400",
-    color: "#888",
   },
   transactionAmount: {
     fontSize: 16,
@@ -1093,7 +1084,6 @@ const styles = StyleSheet.create({
   categoryAmount: {
     fontSize: 14,
     fontWeight: "400",
-    color: "#888",
   },
 });
 

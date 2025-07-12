@@ -165,6 +165,7 @@ const AddReceiptScreen = () => {
 
     if (
       budgetLimit &&
+      budgetLimit > 0 &&
       percentSpent >= thresholdValue &&
       notificationsEnabled &&
       !budgetObj.notified
@@ -271,7 +272,7 @@ const AddReceiptScreen = () => {
             <Text style={[styles.title, { color: theme.text }]}>
               Add Receipt
             </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            <Text style={[styles.subtitle, { color: theme.subtleText }]}>
               Capture and categorize your expenses
             </Text>
           </Animated.View>
@@ -320,7 +321,7 @@ const AddReceiptScreen = () => {
                 <Text
                   style={[
                     styles.photoPlaceholderSubtext,
-                    { color: theme.textSecondary },
+                    { color: theme.subtleText },
                   ]}
                 >
                   Take a photo or choose from library
@@ -406,7 +407,7 @@ const AddReceiptScreen = () => {
                     <TextInput
                       style={[styles.amountInput, { color: theme.text }]}
                       placeholder="0.00"
-                      placeholderTextColor={theme.textSecondary}
+                      placeholderTextColor={theme.subtleText}
                       keyboardType="numeric"
                       value={amount}
                       onChangeText={setAmount}
@@ -462,7 +463,7 @@ const AddReceiptScreen = () => {
                       },
                     ]}
                     placeholder="e.g., Lunch with Mom"
-                    placeholderTextColor={theme.textSecondary}
+                    placeholderTextColor={theme.subtleText}
                     value={tag}
                     onChangeText={setTag}
                   />

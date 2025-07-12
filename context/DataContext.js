@@ -47,7 +47,7 @@ export const DataProvider = ({ children }) => {
         receipts: [],
         incomes: [],
         goals: [],
-        categories: ["Food", "Shopping", "Transport", "Bills"],
+        categories: [], // Start with no categories for personalization
         budgets: {},
         notificationSettings: { enabled: false },
       };
@@ -76,12 +76,7 @@ export const DataProvider = ({ children }) => {
           receipts: data.receipts || [],
           incomes: data.incomes || [],
           goals: data.goals || [],
-          categories: data.categories || [
-            "Food",
-            "Shopping",
-            "Transport",
-            "Bills",
-          ],
+          categories: data.categories || [], // Start with no categories for personalization
           budgets: data.budgets || {},
           notificationSettings: data.notificationSettings || { enabled: false },
         };

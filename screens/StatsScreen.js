@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BudgetContext } from "../context/BudgetContext";
+import { ReceiptContext } from "../context/ReceiptContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
@@ -21,6 +22,7 @@ import { useCurrency } from "../context/CurrencyContext";
 
 const StatsScreen = () => {
   const { expenses } = useContext(BudgetContext);
+  const { receipts } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
   const navigation = useNavigation();
@@ -55,12 +57,13 @@ const StatsScreen = () => {
     }).start();
   }, []);
 
+  // Use only receipts as the single source of truth
   const categorySpent = {};
-  expenses.forEach((e) => {
+  receipts.forEach((e) => {
     categorySpent[e.category] = (categorySpent[e.category] || 0) + e.amount;
   });
 
-  const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalSpent = receipts.reduce((sum, e) => sum + e.amount, 0);
 
   const mostSpent = Object.entries(categorySpent).reduce(
     (max, [cat, amt]) =>

@@ -10,6 +10,8 @@ import {
   Platform,
   Animated,
   Alert,
+  Modal,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemeContext } from "../context/ThemeContext";
@@ -31,6 +33,10 @@ const SavingsGoalScreen = () => {
   const [goalName, setGoalName] = useState("");
   const [goalAmount, setGoalAmount] = useState("");
   const [savedAmount, setSavedAmount] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customAmount, setCustomAmount] = useState("");
+  const [selectedGoalId, setSelectedGoalId] = useState(null);
 
   // Sync with DataContext
   useEffect(() => {
@@ -80,6 +86,7 @@ const SavingsGoalScreen = () => {
     setGoalName("");
     setGoalAmount("");
     setSavedAmount("");
+    setShowAddModal(false);
   };
 
   const adjustSavedAmount = async (goalId, amount) => {
@@ -90,6 +97,17 @@ const SavingsGoalScreen = () => {
     );
     setGoals(updatedGoals);
     await saveGoals(updatedGoals);
+  };
+
+  const handleCustomAdjustment = async () => {
+    if (!customAmount || !selectedGoalId) return;
+    const amount = parseFloat(customAmount);
+    if (isNaN(amount)) return;
+
+    await adjustSavedAmount(selectedGoalId, amount);
+    setCustomAmount("");
+    setSelectedGoalId(null);
+    setShowCustomModal(false);
   };
 
   const deleteGoal = (goalId) => {
@@ -111,7 +129,7 @@ const SavingsGoalScreen = () => {
     );
   };
 
-  const formatCurrency = (amount) => `$${Math.round(amount).toLocaleString()}`;
+  const formatCurrency = (amount) => `$${Number(amount).toFixed(2)}`;
 
   const renderHeader = () => (
     <Animated.View
@@ -123,103 +141,20 @@ const SavingsGoalScreen = () => {
         },
       ]}
     >
-      <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-        Welcome to your
-      </Text>
-      <Text style={[styles.appName, { color: theme.text }]}>
-        <Text style={styles.zennyAccent}>Savings Goals</Text>
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Track your progress towards financial goals
-      </Text>
-    </Animated.View>
-  );
-
-  const renderAddSection = () => (
-    <Animated.View
-      style={[
-        styles.addSection,
-        {
-          opacity: contentAnim,
-          transform: [
-            {
-              translateY: contentAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [20, 0],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      <View style={styles.addCard}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Add New Goal
+      <View style={styles.headerTop}>
+        <Text style={[styles.appName, { color: theme.text }]}>
+          <Text style={styles.zennyAccent}>Savings Goals</Text>
         </Text>
-
-        <TextInput
-          placeholder="Goal name (e.g., Vacation)"
-          value={goalName}
-          onChangeText={setGoalName}
-          style={[
-            styles.input,
-            {
-              borderColor: theme.textSecondary + "30",
-              color: theme.text,
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              shadowColor: theme.text,
-            },
-          ]}
-          placeholderTextColor={theme.textSecondary}
-        />
-
-        <TextInput
-          placeholder="Target Amount ($)"
-          value={goalAmount}
-          onChangeText={setGoalAmount}
-          keyboardType="numeric"
-          style={[
-            styles.input,
-            {
-              borderColor: theme.textSecondary + "30",
-              color: theme.text,
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              shadowColor: theme.text,
-            },
-          ]}
-          placeholderTextColor={theme.textSecondary}
-        />
-
-        <TextInput
-          placeholder="Amount Already Saved ($)"
-          value={savedAmount}
-          onChangeText={setSavedAmount}
-          keyboardType="numeric"
-          style={[
-            styles.input,
-            {
-              borderColor: theme.textSecondary + "30",
-              color: theme.text,
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              shadowColor: theme.text,
-            },
-          ]}
-          placeholderTextColor={theme.textSecondary}
-        />
-
         <TouchableOpacity
-          style={[
-            styles.addButton,
-            {
-              backgroundColor: "#4CAF50",
-            },
-          ]}
-          onPress={addGoal}
-          activeOpacity={0.8}
+          style={styles.addButton}
+          onPress={() => setShowAddModal(true)}
         >
-          <Text style={styles.addButtonText}>🎯 Add Goal</Text>
+          <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
       </View>
+      <Text style={[styles.subtitle, { color: theme.subtleText }]}>
+        Track your progress towards financial goals
+      </Text>
     </Animated.View>
   );
 
@@ -271,7 +206,7 @@ const SavingsGoalScreen = () => {
 
         <View style={styles.amountRow}>
           <View style={styles.amountItem}>
-            <Text style={[styles.amountLabel, { color: theme.textSecondary }]}>
+            <Text style={[styles.amountLabel, { color: theme.subtleText }]}>
               Saved
             </Text>
             <Text style={[styles.amountValue, { color: "#4CAF50" }]}>
@@ -279,7 +214,7 @@ const SavingsGoalScreen = () => {
             </Text>
           </View>
           <View style={styles.amountItem}>
-            <Text style={[styles.amountLabel, { color: theme.textSecondary }]}>
+            <Text style={[styles.amountLabel, { color: theme.subtleText }]}>
               Goal
             </Text>
             <Text style={[styles.amountValue, { color: theme.text }]}>
@@ -287,7 +222,7 @@ const SavingsGoalScreen = () => {
             </Text>
           </View>
           <View style={styles.amountItem}>
-            <Text style={[styles.amountLabel, { color: theme.textSecondary }]}>
+            <Text style={[styles.amountLabel, { color: theme.subtleText }]}>
               Remaining
             </Text>
             <Text
@@ -326,9 +261,7 @@ const SavingsGoalScreen = () => {
         </View>
 
         <View style={styles.quickActions}>
-          <Text
-            style={[styles.quickActionsTitle, { color: theme.textSecondary }]}
-          >
+          <Text style={[styles.quickActionsTitle, { color: theme.subtleText }]}>
             Quick Adjustments
           </Text>
           <View style={styles.quickButtonsRow}>
@@ -359,6 +292,20 @@ const SavingsGoalScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
+          <View style={styles.quickButtonsRow}>
+            <TouchableOpacity
+              style={[styles.customButton, { borderColor: theme.primary }]}
+              onPress={() => {
+                setSelectedGoalId(goal.id);
+                setShowCustomModal(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.customButtonText, { color: theme.primary }]}>
+                Custom Amount
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -374,7 +321,6 @@ const SavingsGoalScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {renderHeader()}
-        {renderAddSection()}
 
         <View style={styles.goalsContainer}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -388,9 +334,9 @@ const SavingsGoalScreen = () => {
                 No goals yet
               </Text>
               <Text
-                style={[styles.emptyStateText, { color: theme.textSecondary }]}
+                style={[styles.emptyStateText, { color: theme.subtleText }]}
               >
-                Add your first savings goal above to get started
+                Add your first savings goal using the + button above
               </Text>
             </View>
           ) : (
@@ -400,6 +346,177 @@ const SavingsGoalScreen = () => {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+
+      {/* Add Goal Modal */}
+      <Modal
+        visible={showAddModal}
+        animationType="slide"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <StatusBar
+          barStyle={darkMode ? "light-content" : "dark-content"}
+          backgroundColor={darkMode ? "#000000" : "#FFFFFF"}
+        />
+        <View
+          style={[
+            styles.modalContainer,
+            { backgroundColor: darkMode ? "#000000" : "#FFFFFF" },
+          ]}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Add New Goal
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowAddModal(false)}
+              style={styles.closeButton}
+            >
+              <Text style={[styles.closeText, { color: theme.danger }]}>×</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            placeholder="Goal name (e.g., Vacation)"
+            value={goalName}
+            onChangeText={setGoalName}
+            style={[
+              styles.modalInput,
+              {
+                borderColor: theme.subtleText + "30",
+                color: theme.text,
+                backgroundColor: darkMode ? "#000000" : "#FFFFFF",
+              },
+            ]}
+            placeholderTextColor={theme.subtleText}
+          />
+
+          <TextInput
+            placeholder="Target Amount ($)"
+            value={goalAmount}
+            onChangeText={setGoalAmount}
+            keyboardType="numeric"
+            style={[
+              styles.modalInput,
+              {
+                borderColor: theme.subtleText + "30",
+                color: theme.text,
+                backgroundColor: darkMode ? "#000000" : "#FFFFFF",
+              },
+            ]}
+            placeholderTextColor={theme.subtleText}
+          />
+
+          <TextInput
+            placeholder="Amount Already Saved ($)"
+            value={savedAmount}
+            onChangeText={setSavedAmount}
+            keyboardType="numeric"
+            style={[
+              styles.modalInput,
+              {
+                borderColor: theme.subtleText + "30",
+                color: theme.text,
+                backgroundColor: darkMode ? "#000000" : "#FFFFFF",
+              },
+            ]}
+            placeholderTextColor={theme.subtleText}
+          />
+
+          <TouchableOpacity
+            style={[styles.modalAddButton, { backgroundColor: "#4CAF50" }]}
+            onPress={addGoal}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.modalAddButtonText}>🎯 Add Goal</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShowAddModal(false)}
+            style={styles.modalCancelButton}
+          >
+            <Text style={{ color: theme.subtleText }}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Custom Amount Modal */}
+      <Modal
+        visible={showCustomModal}
+        animationType="slide"
+        onRequestClose={() => setShowCustomModal(false)}
+      >
+        <StatusBar
+          barStyle={darkMode ? "light-content" : "dark-content"}
+          backgroundColor={darkMode ? "#000000" : "#FFFFFF"}
+        />
+        <View
+          style={[
+            styles.modalContainer,
+            { backgroundColor: darkMode ? "#000000" : "#FFFFFF" },
+          ]}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Custom Adjustment
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowCustomModal(false)}
+              style={styles.closeButton}
+            >
+              <Text style={[styles.closeText, { color: theme.danger }]}>×</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            placeholder="Enter amount (e.g., 75.50)"
+            value={customAmount}
+            onChangeText={setCustomAmount}
+            keyboardType="numeric"
+            style={[
+              styles.modalInput,
+              {
+                borderColor: theme.subtleText + "30",
+                color: theme.text,
+                backgroundColor: darkMode ? "#000000" : "#FFFFFF",
+              },
+            ]}
+            placeholderTextColor={theme.subtleText}
+          />
+
+          <View style={styles.customButtonsRow}>
+            <TouchableOpacity
+              style={[styles.customModalButton, { backgroundColor: "#4CAF50" }]}
+              onPress={() => {
+                if (customAmount) {
+                  handleCustomAdjustment();
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.customModalButtonText}>Add Amount</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.customModalButton, { backgroundColor: "#E74C3C" }]}
+              onPress={() => {
+                if (customAmount) {
+                  setCustomAmount("-" + customAmount);
+                  setTimeout(() => handleCustomAdjustment(), 100);
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.customModalButtonText}>Subtract Amount</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setShowCustomModal(false)}
+            style={styles.modalCancelButton}
+          >
+            <Text style={{ color: theme.subtleText }}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -415,19 +532,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
   },
   header: {
-    alignItems: "center",
-    paddingVertical: 40,
-    paddingTop: 20,
+    paddingVertical: 24,
+    paddingTop: 16,
   },
-  welcomeText: {
-    fontSize: 16,
-    fontWeight: "400",
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   appName: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: "800",
-    marginBottom: 8,
   },
   zennyAccent: {
     color: "#4CAF50",
@@ -470,23 +586,26 @@ const styles = StyleSheet.create({
     }),
   },
   addButton: {
-    paddingVertical: 16,
-    borderRadius: radius.medium,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#4CAF50",
     alignItems: "center",
+    justifyContent: "center",
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.1,
         shadowRadius: 4,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
     }),
   },
   addButtonText: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 24,
     fontWeight: "700",
   },
   goalsContainer: {
@@ -598,6 +717,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+  customButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: radius.small,
+    borderWidth: 1,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  customButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
   emptyState: {
     alignItems: "center",
     paddingVertical: 40,
@@ -620,6 +751,93 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    padding: 24,
+    justifyContent: "center",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeText: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: radius.medium,
+    padding: 16,
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 16,
+  },
+  modalAddButton: {
+    paddingVertical: 16,
+    borderRadius: radius.medium,
+    alignItems: "center",
+    marginTop: 8,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  modalAddButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  modalCancelButton: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  customButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 8,
+  },
+  customModalButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: radius.medium,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  customModalButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
 
