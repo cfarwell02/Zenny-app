@@ -20,6 +20,7 @@ import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
+import { useCurrency } from "../context/CurrencyContext";
 import { Picker } from "@react-native-picker/picker";
 
 const ManageBudgetScreen = ({ navigation }) => {
@@ -32,6 +33,7 @@ const ManageBudgetScreen = ({ navigation }) => {
   const { categories } = useContext(CategoryContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const { formatCurrency } = useCurrency();
 
   const [open, setOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -125,7 +127,9 @@ const ManageBudgetScreen = ({ navigation }) => {
 
       Alert.alert(
         "Saved",
-        `Updated budget for ${selectedCategory}: $${newAmount} (Threshold: ${threshold}%)`
+        `Updated budget for ${selectedCategory}: ${formatCurrency(
+          Number(newAmount)
+        )} (Threshold: ${threshold}%)`
       );
 
       setSelectedCategory("");

@@ -32,6 +32,12 @@ export const CategoryProvider = ({ children }) => {
     await saveCategories(updatedCategories);
   };
 
+  // Clear all custom categories (reset to default)
+  const clearCategories = async () => {
+    setCategories(defaultCategories);
+    await saveCategories(defaultCategories);
+  };
+
   return (
     <CategoryContext.Provider
       value={{
@@ -39,6 +45,7 @@ export const CategoryProvider = ({ children }) => {
         setCategories,
         addCategory,
         deleteCategory,
+        clearCategories, // Expose clearCategories
       }}
     >
       {children}

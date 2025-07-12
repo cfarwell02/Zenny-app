@@ -58,8 +58,16 @@ export const ReceiptProvider = ({ children }) => {
     }
   };
 
+  // Clear all receipts
+  const clearReceipts = async () => {
+    setReceipts([]);
+    await saveReceipts([]);
+  };
+
   return (
-    <ReceiptContext.Provider value={{ receipts, addReceipt, deleteReceipt }}>
+    <ReceiptContext.Provider
+      value={{ receipts, addReceipt, deleteReceipt, clearReceipts }}
+    >
       {children}
     </ReceiptContext.Provider>
   );

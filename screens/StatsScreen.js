@@ -17,12 +17,14 @@ import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { PieChart } from "react-native-chart-kit";
 import { useNavigation } from "@react-navigation/native";
+import { useCurrency } from "../context/CurrencyContext";
 
 const StatsScreen = () => {
   const { expenses } = useContext(BudgetContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
   const navigation = useNavigation();
+  const { formatCurrency, convertCurrency } = useCurrency();
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -122,7 +124,7 @@ const StatsScreen = () => {
           Total Spent
         </Text>
         <Text style={[styles.totalAmount, { color: "#E74C3C" }]}>
-          ${totalSpent.toFixed(2)}
+          {formatCurrency(convertCurrency(totalSpent))}
         </Text>
       </View>
     </Animated.View>
@@ -205,7 +207,7 @@ const StatsScreen = () => {
             </Text>
             <View style={styles.statValues}>
               <Text style={[styles.statAmount, { color: "#E74C3C" }]}>
-                ${amount.toFixed(2)}
+                {formatCurrency(convertCurrency(amount))}
               </Text>
               <Text
                 style={[styles.statPercentage, { color: theme.textSecondary }]}
@@ -247,8 +249,8 @@ const StatsScreen = () => {
             <Text style={[styles.insightHighlight, { color: "#E74C3C" }]}>
               {mostSpent.category}
             </Text>{" "}
-            (${mostSpent.amount.toFixed(2)}). Consider budgeting more carefully
-            in this area!
+            ({formatCurrency(convertCurrency(mostSpent.amount))}). Consider
+            budgeting more carefully in this area!
           </Text>
         </View>
       )}

@@ -35,6 +35,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { IncomeContext } from "../context/IncomeContext";
+import { useCurrency } from "../context/CurrencyContext";
 
 const { width } = Dimensions.get("window");
 
@@ -43,6 +44,8 @@ const IncomeScreen = () => {
   const theme = darkMode ? darkTheme : lightTheme;
   const { incomeList, addIncome, deleteIncome, editIncome } =
     useContext(IncomeContext);
+  const { formatCurrency: formatCurrencyWithContext, convertCurrency } =
+    useCurrency();
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState("");
@@ -101,7 +104,7 @@ const IncomeScreen = () => {
   };
 
   const formatCurrency = (amount) =>
-    hideAmounts ? "••••" : `$${Math.round(amount).toLocaleString()}`;
+    hideAmounts ? "••••" : formatCurrencyWithContext(convertCurrency(amount));
 
   const validateAmount = (text) => {
     const numericValue = text.replace(/[^0-9.]/g, "");

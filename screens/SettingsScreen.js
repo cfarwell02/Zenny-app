@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemeContext } from "../context/ThemeContext";
@@ -16,16 +17,47 @@ import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
 import * as Notifications from "expo-notifications";
 import { NotificationContext } from "../context/NotificationContext";
+import { useCurrency } from "../context/CurrencyContext";
+import { ReceiptContext } from "../context/ReceiptContext";
+import { IncomeContext } from "../context/IncomeContext";
+import { BudgetContext } from "../context/BudgetContext";
+import { CategoryContext } from "../context/CategoryContext";
+import { DataContext } from "../context/DataContext";
+import {
+  exportDataAsCSV,
+  exportDataAsJSON,
+  getExportOptions,
+} from "../utils/exportData";
+import {
+  lightHaptic,
+  mediumHaptic,
+  heavyHaptic,
+  hapticPatterns,
+} from "../utils/hapticFeedback";
 import auth from "@react-native-firebase/auth";
 
 const SettingsScreen = () => {
   const { darkMode, toggleDarkMode } = useContext(ThemeContext);
   const { notificationsEnabled, setNotificationsEnabled } =
     useContext(NotificationContext);
+  const {
+    selectedCurrency,
+    updateCurrency,
+    getCurrencyOptions,
+    SUPPORTED_CURRENCIES,
+  } = useCurrency();
+  const { receipts, clearReceipts } = useContext(ReceiptContext);
+  const { incomeList, clearIncomes } = useContext(IncomeContext);
+  const { categoryBudgets, setCategoryBudgets, clearBudgets } =
+    useContext(BudgetContext);
+  const { categories, clearCategories } = useContext(CategoryContext);
+  const { userData, clearUserData } = useContext(DataContext);
+  const [isExporting, setIsExporting] = useState(false);
 
   const theme = darkMode ? darkTheme : lightTheme;
 
   const handleToggleNotifications = async (value) => {
+    lightHaptic(); // Haptic feedback for toggle
     if (Platform.OS === "web") return;
 
     const { status } = await Notifications.getPermissionsAsync();
@@ -44,17 +76,39 @@ const SettingsScreen = () => {
     setNotificationsEnabled(value);
   };
 
-  const handleClearData = () => {
+  const handleClearData = async () => {
+    heavyHaptic(); // Heavy haptic for destructive action
     Alert.alert(
-      "Clear All Receipts?",
-      "This will delete all your saved receipts.",
+      "Clear All Data?",
+      "This will delete all your receipts, incomes, budgets, and categories. This action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Clear",
-          onPress: () => {
-            // Add your context clear function here
-            console.log("Receipts cleared");
+          text: "Clear All",
+          onPress: async () => {
+            try {
+              // Clear all data from contexts
+              if (clearReceipts) await clearReceipts();
+              if (clearIncomes) await clearIncomes();
+              if (clearBudgets) await clearBudgets();
+              if (clearCategories) await clearCategories();
+              if (clearUserData) await clearUserData();
+
+              // Reset budgets state
+              setCategoryBudgets({});
+
+              Alert.alert(
+                "Data Cleared",
+                "All your financial data has been successfully cleared."
+              );
+            } catch (error) {
+              console.error("Error clearing data:", error);
+              hapticPatterns.errorOccurred(); // Error haptic
+              Alert.alert(
+                "Error",
+                "Failed to clear some data. Please try again."
+              );
+            }
           },
           style: "destructive",
         },
@@ -104,6 +158,53 @@ const SettingsScreen = () => {
     );
   };
 
+  const handleExportData = async () => {
+    lightHaptic(); // Light haptic for button press
+    if (!userData || Object.keys(userData).length === 0) {
+      hapticPatterns.errorOccurred(); // Error haptic for no data
+      Alert.alert("No Data", "There's no data to export.");
+      return;
+    }
+
+    const exportOptions = getExportOptions();
+    Alert.alert("Export Data", "Choose export format:", [
+      ...exportOptions.map((option) => ({
+        text: option.label,
+        onPress: () => performExport(option.value),
+      })),
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const performExport = async (format) => {
+    setIsExporting(true);
+    try {
+      let result;
+      if (format === "csv") {
+        result = await exportDataAsCSV(userData, selectedCurrency);
+      } else if (format === "json") {
+        result = await exportDataAsJSON(userData, selectedCurrency);
+      }
+
+      if (result.success) {
+        hapticPatterns.dataExported(); // Success haptic for export
+        Alert.alert(
+          "Export Successful",
+          `Your data has been exported as ${result.fileName}`,
+          [{ text: "OK" }]
+        );
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      hapticPatterns.errorOccurred(); // Error haptic
+      Alert.alert("Export Failed", "Failed to export data. Please try again.", [
+        { text: "OK" },
+      ]);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView
@@ -121,7 +222,13 @@ const SettingsScreen = () => {
 
           <View style={styles.row}>
             <Text style={[styles.label, { color: theme.text }]}>Dark Mode</Text>
-            <Switch value={darkMode} onValueChange={toggleDarkMode} />
+            <Switch
+              value={darkMode}
+              onValueChange={(value) => {
+                lightHaptic();
+                toggleDarkMode();
+              }}
+            />
           </View>
 
           <View style={styles.row}>
@@ -133,19 +240,68 @@ const SettingsScreen = () => {
               onValueChange={handleToggleNotifications}
             />
           </View>
+
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: theme.text }]}>Currency</Text>
+            <TouchableOpacity
+              style={[
+                styles.currencyPicker,
+                { backgroundColor: theme.cardBackground },
+              ]}
+              onPress={() => {
+                Alert.alert(
+                  "Select Currency",
+                  "Choose your preferred currency",
+                  [
+                    ...getCurrencyOptions().map((option) => ({
+                      text: option.label,
+                      onPress: () => updateCurrency(option.value),
+                    })),
+                    { text: "Cancel", style: "cancel" },
+                  ]
+                );
+              }}
+            >
+              <Text style={[styles.currencyText, { color: theme.text }]}>
+                {SUPPORTED_CURRENCIES[selectedCurrency]?.symbol}{" "}
+                {selectedCurrency}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.subtleText }]}>
+            Data Management
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: theme.primary }]}
+            onPress={handleExportData}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <View style={styles.exportLoading}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.buttonText}>Exporting...</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>📊 Export Data</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: theme.danger }]}
+            onPress={handleClearData}
+          >
+            <Text style={styles.buttonText}>🗑️ Clear All Data</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.subtleText }]}>
             Account
           </Text>
-
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.danger }]}
-            onPress={handleClearData}
-          >
-            <Text style={styles.buttonText}>🗑️ Clear All Receipts</Text>
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, { backgroundColor: "#999" }]}
@@ -206,6 +362,22 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
+  },
+  currencyPicker: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.small,
+    backgroundColor: "#f0f0f0",
+  },
+  currencyText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  exportLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
 });
 

@@ -74,6 +74,13 @@ export const BudgetProvider = ({ children }) => {
     return false;
   };
 
+  // Clear all budgets and expenses
+  const clearBudgets = async () => {
+    setCategoryBudgets({});
+    setExpenses([]);
+    await saveBudgets({});
+  };
+
   useEffect(() => {
     // Ensure all categories are tracked in categoryBudgets
     setCategoryBudgets((prev) => {
@@ -103,6 +110,7 @@ export const BudgetProvider = ({ children }) => {
         cleanupDeletedCategoryBudgets,
         removeExpense,
         checkAndNotifyThreshold,
+        clearBudgets, // Expose clearBudgets
       }}
     >
       {children}

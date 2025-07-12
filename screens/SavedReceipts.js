@@ -24,6 +24,7 @@ import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { spacing } from "../constants/spacing";
 import { radius } from "../constants/radius";
+import { useCurrency } from "../context/CurrencyContext";
 import { Picker } from "@react-native-picker/picker";
 import { CategoryContext } from "../context/CategoryContext";
 
@@ -35,6 +36,7 @@ const SavedReceipts = () => {
   const { categories } = useContext(CategoryContext);
   const { categoryBudgets, updateCategoryBudget, removeExpense, expenses } =
     useContext(BudgetContext);
+  const { formatCurrency, convertCurrency } = useCurrency();
   const [searchTag, setSearchTag] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -122,7 +124,7 @@ const SavedReceipts = () => {
               { color: darkMode ? "#fff" : theme.text },
             ]}
           >
-            ${item.amount.toFixed(2)}
+            {formatCurrency(convertCurrency(item.amount))}
           </Text>
           <Text
             style={[
@@ -375,7 +377,7 @@ const SavedReceipts = () => {
                               { color: darkMode ? "#fff" : theme.text },
                             ]}
                           >
-                            ${item.amount.toFixed(2)}
+                            {formatCurrency(convertCurrency(item.amount))}
                           </Text>
                           <Text
                             style={[
@@ -470,7 +472,9 @@ const SavedReceipts = () => {
                           { color: darkMode ? "#fff" : theme.text },
                         ]}
                       >
-                        ${selectedReceipt.amount.toFixed(2)}
+                        {formatCurrency(
+                          convertCurrency(selectedReceipt.amount)
+                        )}
                       </Text>
                       <Text
                         style={[
@@ -632,7 +636,7 @@ const SavedReceipts = () => {
                         { color: darkMode ? "#fff" : theme.text },
                       ]}
                     >
-                      ${selectedReceipt.amount.toFixed(2)}
+                      {formatCurrency(convertCurrency(selectedReceipt.amount))}
                     </Text>
                     <Text
                       style={[

@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useEffect } from "react";
+import React, { useContext, useRef, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Dimensions,
   Animated,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { ThemeContext } from "../context/ThemeContext";
 import { darkMode } from "../context/ThemeContext";
@@ -20,12 +22,27 @@ import { IncomeContext } from "../context/IncomeContext";
 import * as Notifications from "expo-notifications";
 import { BudgetContext } from "../context/BudgetContext";
 import { NotificationContext } from "../context/NotificationContext";
+import { useCurrency } from "../context/CurrencyContext";
+import { DataContext } from "../context/DataContext";
+import {
+  exportDataAsCSV,
+  exportDataAsJSON,
+  getExportOptions,
+} from "../utils/exportData";
+import {
+  lightHaptic,
+  mediumHaptic,
+  hapticPatterns,
+} from "../utils/hapticFeedback";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 const HomeScreen = ({ navigation }) => {
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const { formatCurrency, convertCurrency, selectedCurrency } = useCurrency();
+  const { userData } = useContext(DataContext);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Animation values
   const NUM_ANIM_SECTIONS = 8; // 1 balance card + 6 menu cards + 1 quick actions
@@ -120,12 +137,7 @@ const HomeScreen = ({ navigation }) => {
     0
   );
 
-  // Format as currency
-  const formatCurrency = (amount) =>
-    `$${amount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+  // Format as currency using the currency context
 
   useEffect(() => {
     // Animate header
@@ -164,6 +176,53 @@ const HomeScreen = ({ navigation }) => {
       }
     });
   }, [receipts, notificationsEnabled]);
+
+  const handleQuickExport = async () => {
+    lightHaptic(); // Light haptic for button press
+    if (!userData || Object.keys(userData).length === 0) {
+      hapticPatterns.errorOccurred(); // Error haptic for no data
+      Alert.alert("No Data", "There's no data to export.");
+      return;
+    }
+
+    const exportOptions = getExportOptions();
+    Alert.alert("Export Data", "Choose export format:", [
+      ...exportOptions.map((option) => ({
+        text: option.label,
+        onPress: () => performQuickExport(option.value),
+      })),
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const performQuickExport = async (format) => {
+    setIsExporting(true);
+    try {
+      let result;
+      if (format === "csv") {
+        result = await exportDataAsCSV(userData, selectedCurrency);
+      } else if (format === "json") {
+        result = await exportDataAsJSON(userData, selectedCurrency);
+      }
+
+      if (result.success) {
+        hapticPatterns.dataExported(); // Success haptic for export
+        Alert.alert(
+          "Export Successful",
+          `Your data has been exported as ${result.fileName}`,
+          [{ text: "OK" }]
+        );
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      hapticPatterns.errorOccurred(); // Error haptic
+      Alert.alert("Export Failed", "Failed to export data. Please try again.", [
+        { text: "OK" },
+      ]);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const menuItems = [
     {
@@ -267,7 +326,7 @@ const HomeScreen = ({ navigation }) => {
             This Month
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
-            {formatCurrency(totalSpent)}
+            {formatCurrency(convertCurrency(totalSpent))}
           </Text>
         </View>
         <View style={styles.statDivider} />
@@ -281,7 +340,7 @@ const HomeScreen = ({ navigation }) => {
             Income
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
-            {formatCurrency(totalIncome)}
+            {formatCurrency(convertCurrency(totalIncome))}
           </Text>
         </View>
       </View>
@@ -383,8 +442,8 @@ const HomeScreen = ({ navigation }) => {
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {transaction.amount > 0 ? "+" : ""}$
-              {Math.abs(transaction.amount).toFixed(2)}
+              {transaction.amount > 0 ? "+" : ""}
+              {formatCurrency(convertCurrency(Math.abs(transaction.amount)))}
             </Text>
           </View>
         ))
@@ -447,7 +506,7 @@ const HomeScreen = ({ navigation }) => {
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  ${cat.amount.toFixed(2)}
+                  {formatCurrency(convertCurrency(cat.amount))}
                 </Text>
               </View>
             </View>
@@ -546,7 +605,10 @@ const HomeScreen = ({ navigation }) => {
               shadowColor: theme.text,
             },
           ]}
-          onPress={() => navigation.navigate("Add Receipt")}
+          onPress={() => {
+            lightHaptic();
+            navigation.navigate("Add Receipt");
+          }}
         >
           <Text style={styles.quickActionIcon}>📷</Text>
           <Text style={[styles.quickActionText, { color: theme.text }]}>
@@ -561,11 +623,34 @@ const HomeScreen = ({ navigation }) => {
               shadowColor: theme.text,
             },
           ]}
-          onPress={() => navigation.navigate("My Budget")}
+          onPress={() => {
+            lightHaptic();
+            navigation.navigate("My Budget");
+          }}
         >
           <Text style={styles.quickActionIcon}>📊</Text>
           <Text style={[styles.quickActionText, { color: theme.text }]}>
             View Budget
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.quickActionButton,
+            {
+              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+              shadowColor: theme.text,
+            },
+          ]}
+          onPress={handleQuickExport}
+          disabled={isExporting}
+        >
+          {isExporting ? (
+            <ActivityIndicator size="small" color={theme.text} />
+          ) : (
+            <Text style={styles.quickActionIcon}>📤</Text>
+          )}
+          <Text style={[styles.quickActionText, { color: theme.text }]}>
+            {isExporting ? "Exporting..." : "Export Data"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -657,7 +742,8 @@ const HomeScreen = ({ navigation }) => {
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {item.amount > 0 ? "+" : ""}${Math.abs(item.amount).toFixed(2)}
+              {item.amount > 0 ? "+" : ""}
+              {formatCurrency(convertCurrency(Math.abs(item.amount)))}
             </Text>
           </View>
         ))

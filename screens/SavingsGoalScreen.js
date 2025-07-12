@@ -17,6 +17,7 @@ import { DataContext } from "../context/DataContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
+import { useCurrency } from "../context/CurrencyContext";
 
 const { width } = Dimensions.get("window");
 
@@ -24,6 +25,7 @@ const SavingsGoalScreen = () => {
   const { darkMode } = useContext(ThemeContext);
   const { userData, saveGoals } = useContext(DataContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const { formatCurrency: formatCurrencyWithContext } = useCurrency();
 
   const [goals, setGoals] = useState([]);
   const [goalName, setGoalName] = useState("");

@@ -11,6 +11,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { CategoryProvider } from "./context/CategoryContext";
 import { IncomeProvider } from "./context/IncomeContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { DataProvider } from "./context/DataContext";
+import { CurrencyProvider } from "./context/CurrencyContext";
 import AuthScreen from "./screens/AuthScreen";
 
 Notifications.setNotificationHandler({
@@ -48,19 +50,23 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <NotificationProvider>
-        <CategoryProvider>
-          <BudgetProvider>
-            <ReceiptProvider>
-              <IncomeProvider>
-                <AuthProvider>
-                  <MainApp />
-                </AuthProvider>
-              </IncomeProvider>
-            </ReceiptProvider>
-          </BudgetProvider>
-        </CategoryProvider>
-      </NotificationProvider>
+      <DataProvider>
+        <CurrencyProvider>
+          <NotificationProvider>
+            <CategoryProvider>
+              <BudgetProvider>
+                <ReceiptProvider>
+                  <IncomeProvider>
+                    <AuthProvider>
+                      <MainApp />
+                    </AuthProvider>
+                  </IncomeProvider>
+                </ReceiptProvider>
+              </BudgetProvider>
+            </CategoryProvider>
+          </NotificationProvider>
+        </CurrencyProvider>
+      </DataProvider>
     </ThemeProvider>
   );
 }

@@ -150,6 +150,28 @@ export const DataProvider = ({ children }) => {
     await saveAllUserData();
   };
 
+  // Clear all user data
+  const clearUserData = async () => {
+    const user = getCurrentUser();
+    if (!user) {
+      return;
+    }
+    try {
+      await firestore().collection("users").doc(user.uid).delete();
+      setUserData({
+        receipts: [],
+        incomes: [],
+        goals: [],
+        categories: [],
+        budgets: {},
+        notificationSettings: { enabled: false },
+      });
+    } catch (error) {
+      console.error("Error clearing user data:", error);
+      throw error;
+    }
+  };
+
   // Load data on auth state change
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged((user) => {
@@ -187,6 +209,7 @@ export const DataProvider = ({ children }) => {
         saveCategories,
         saveBudgets,
         saveNotificationSettings,
+        clearUserData,
         debugDataState,
       }}
     >

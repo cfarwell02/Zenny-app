@@ -6,11 +6,14 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:android": "eas build --platform android",
+    "build:ios": "eas build --platform ios",
+    "dev-client": "expo start --dev-client"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
-    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/datetimepicker": "^8.4.2",
     "@react-native-firebase/app": "^22.2.1",
     "@react-native-firebase/auth": "^22.2.1",
@@ -21,8 +24,10 @@
     "@react-navigation/native-stack": "^7.3.20",
     "expo": "~53.0.12",
     "expo-dev-client": "~5.2.4",
+    "expo-file-system": "~18.0.4",
     "expo-image-picker": "~16.1.4",
     "expo-notifications": "~0.31.3",
+    "expo-sharing": "~13.0.0",
     "expo-status-bar": "~2.2.3",
     "lodash": "^4.17.21",
     "lucide-react-native": "^0.525.0",
@@ -36,7 +41,7 @@
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "~4.11.1",
-    "react-native-svg": "^15.11.2",
+    "react-native-svg": "^15.12.0",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.20.0"
   },

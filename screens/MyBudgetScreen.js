@@ -16,6 +16,7 @@ import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
+import { useCurrency } from "../context/CurrencyContext";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -24,6 +25,7 @@ const MyBudgetScreen = ({ navigation }) => {
   const { categories } = useContext(CategoryContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const { formatCurrency, convertCurrency } = useCurrency();
 
   const categorySpent = {};
   expenses.forEach((e) => {
@@ -155,7 +157,7 @@ const MyBudgetScreen = ({ navigation }) => {
                 No budget set yet
               </Text>
               <Text style={[styles.spentAmount, { color: theme.text }]}>
-                Spent: ${spent.toFixed(2)}
+                Spent: {formatCurrency(convertCurrency(spent))}
               </Text>
             </View>
           ) : (
@@ -168,7 +170,7 @@ const MyBudgetScreen = ({ navigation }) => {
                     Budget
                   </Text>
                   <Text style={[styles.amountValue, { color: theme.text }]}>
-                    ${budget.toFixed(2)}
+                    {formatCurrency(convertCurrency(budget))}
                   </Text>
                 </View>
                 <View style={styles.amountRow}>
@@ -178,7 +180,7 @@ const MyBudgetScreen = ({ navigation }) => {
                     Spent
                   </Text>
                   <Text style={[styles.amountValue, { color: progressColor }]}>
-                    ${spent.toFixed(2)}
+                    {formatCurrency(convertCurrency(spent))}
                   </Text>
                 </View>
                 <View style={styles.amountRow}>
@@ -193,7 +195,7 @@ const MyBudgetScreen = ({ navigation }) => {
                       { color: remaining >= 0 ? "#4CAF50" : "#E74C3C" },
                     ]}
                   >
-                    ${remaining.toFixed(2)}
+                    {formatCurrency(convertCurrency(remaining))}
                   </Text>
                 </View>
               </View>

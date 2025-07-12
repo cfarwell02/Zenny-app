@@ -5,6 +5,7 @@ import { ReceiptContext } from "../context/ReceiptContext";
 import { CategoryContext } from "../context/CategoryContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
+import { useCurrency } from "../context/CurrencyContext";
 import { LineChart, BarChart } from "react-native-chart-kit";
 
 const screenWidth = Dimensions.get("window").width;
@@ -19,6 +20,7 @@ const TrendsScreen = () => {
   const { categories } = useContext(CategoryContext);
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const { formatCurrency, convertCurrency } = useCurrency();
   const accent = "#4CAF50";
 
   // --- Monthly Spending Data ---
@@ -130,7 +132,7 @@ const TrendsScreen = () => {
             Category Breakdown (This Month)
           </Text>
           <Text style={[styles.totalThisMonth, { color: accent }]}>
-            Total Spent: ${totalThisMonth.toFixed(2)}
+            Total Spent: {formatCurrency(convertCurrency(totalThisMonth))}
           </Text>
           {barLabels.length > 0 ? (
             <BarChart

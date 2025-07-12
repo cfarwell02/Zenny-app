@@ -19,6 +19,7 @@ import { CategoryContext } from "../context/CategoryContext";
 import { BudgetContext } from "../context/BudgetContext";
 import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
+import { useCurrency } from "../context/CurrencyContext";
 
 const defaultCategories = ["Food", "Shopping", "Transport", "Bills"];
 
@@ -33,6 +34,7 @@ const ManageCategoriesScreen = () => {
   const { categoryBudgets, setCategoryBudgets, updateCategoryBudget } =
     useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
+  const { formatCurrency } = useCurrency();
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
