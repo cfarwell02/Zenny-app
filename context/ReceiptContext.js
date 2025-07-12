@@ -58,15 +58,32 @@ export const ReceiptProvider = ({ children }) => {
     }
   };
 
-  // Clear all receipts
-  const clearReceipts = async () => {
-    setReceipts([]);
-    await saveReceipts([]);
+  const updateReceipt = async (receiptId, updatedReceipt) => {
+    if (!receiptId) {
+      throw new Error("Receipt ID is required for update");
+    }
+
+    try {
+      const updatedReceipts = receipts.map((r) =>
+        r.id === receiptId ? { ...r, ...updatedReceipt } : r
+      );
+      setReceipts(updatedReceipts);
+
+      // Save to Firestore
+      await saveReceipts(updatedReceipts);
+    } catch (error) {
+      throw error;
+    }
   };
 
   return (
     <ReceiptContext.Provider
-      value={{ receipts, addReceipt, deleteReceipt, clearReceipts }}
+      value={{
+        receipts,
+        addReceipt,
+        deleteReceipt,
+        updateReceipt,
+      }}
     >
       {children}
     </ReceiptContext.Provider>

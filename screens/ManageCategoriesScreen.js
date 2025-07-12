@@ -25,88 +25,7 @@ import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { useCurrency } from "../context/CurrencyContext";
 
-// Simple list of all available categories
-const allAvailableCategories = [
-  "Food & Dining",
-  "Transportation",
-  "Shopping",
-  "Bills & Utilities",
-  "Housing",
-  "Healthcare",
-  "Entertainment",
-  "Education",
-  "Groceries",
-  "Restaurants",
-  "Coffee & Drinks",
-  "Fast Food",
-  "Takeout",
-  "Alcohol",
-  "Snacks",
-  "Gas",
-  "Public Transit",
-  "Ride Sharing",
-  "Car Maintenance",
-  "Parking",
-  "Tolls",
-  "Car Insurance",
-  "Car Payment",
-  "Clothing",
-  "Electronics",
-  "Home & Garden",
-  "Books",
-  "Gifts",
-  "Personal Care",
-  "Beauty",
-  "Electricity",
-  "Water",
-  "Internet",
-  "Phone",
-  "Cable/Streaming",
-  "Gas/Heating",
-  "Trash",
-  "Rent",
-  "Mortgage",
-  "Home Insurance",
-  "Property Tax",
-  "Home Maintenance",
-  "Furniture",
-  "Decor",
-  "Medical Bills",
-  "Dental",
-  "Vision",
-  "Prescriptions",
-  "Health Insurance",
-  "Fitness",
-  "Supplements",
-  "Movies",
-  "Games",
-  "Sports",
-  "Concerts",
-  "Hobbies",
-  "Vacations",
-  "Travel",
-  "Tuition",
-  "Books & Supplies",
-  "Student Loans",
-  "Courses",
-  "Workshops",
-  "Business Expenses",
-  "Work Supplies",
-  "Professional Development",
-  "Pets",
-  "Childcare",
-  "Charity",
-  "Investments",
-  "Savings",
-  "Emergency Fund",
-  "Miscellaneous",
-  "Fees",
-  "Taxes",
-  "Insurance",
-  "Legal",
-  "Banking",
-  "ATM Fees",
-];
+const defaultCategories = []; // Empty array to allow deletion of all categories
 
 const ManageCategoriesScreen = () => {
   const [newCategory, setNewCategory] = useState("");
@@ -115,13 +34,8 @@ const ManageCategoriesScreen = () => {
 
   const { darkMode } = useContext(ThemeContext);
   const { receipts } = useContext(ReceiptContext);
-  const {
-    categories,
-    addCategory,
-    deleteCategory,
-    addMultipleCategories,
-    availableCategories,
-  } = useContext(CategoryContext);
+  const { categories, addCategory, deleteCategory, addMultipleCategories } =
+    useContext(CategoryContext);
   const { cleanupDeletedCategoryBudgets } = useContext(BudgetContext);
   const { categoryBudgets, setCategoryBudgets, updateCategoryBudget } =
     useContext(BudgetContext);
@@ -157,14 +71,6 @@ const ManageCategoriesScreen = () => {
       useNativeDriver: true,
     }).start();
   }, []);
-
-  // Debug logs at the top of the component
-  console.log(
-    "allAvailableCategories:",
-    availableCategories.length,
-    availableCategories
-  );
-  console.log("categories (user's current):", categories.length, categories);
 
   const handleAddCategory = async () => {
     const trimmed = newCategory.trim();
@@ -223,9 +129,6 @@ const ManageCategoriesScreen = () => {
   };
 
   const openCategoryModal = () => {
-    console.log("Opening category modal");
-    console.log("Available categories:", allAvailableCategories.length);
-    console.log("Current categories:", categories);
     setShowCategoryModal(true);
     Animated.timing(modalAnim, {
       toValue: 1,
@@ -241,11 +144,37 @@ const ManageCategoriesScreen = () => {
       useNativeDriver: true,
     }).start(() => {
       setShowCategoryModal(false);
+      setSelectedCategories([]);
     });
   };
 
+  const toggleCategorySelection = (category) => {
+    setSelectedCategories((prev) =>
+      prev.includes(category)
+        ? prev.filter((cat) => cat !== category)
+        : [...prev, category]
+    );
+  };
+
+  const handleAddSelectedCategories = async () => {
+    if (selectedCategories.length === 0) {
+      closeCategoryModal();
+      return;
+    }
+
+    try {
+      // Use addMultipleCategories which is designed to handle multiple categories properly
+      await addMultipleCategories(selectedCategories);
+      setSelectedCategories([]);
+      closeCategoryModal();
+    } catch (error) {
+      console.error("Error adding categories:", error);
+      Alert.alert("Error", "Failed to add some categories. Please try again.");
+    }
+  };
+
   const renderCategory = ({ item }) => (
-    <View
+    <Animated.View
       style={[
         styles.categoryCard,
         {
@@ -255,16 +184,26 @@ const ManageCategoriesScreen = () => {
       ]}
     >
       <View style={styles.categoryContent}>
-        <Text style={[styles.categoryText, { color: theme.text }]}>{item}</Text>
-        <TouchableOpacity
-          onPress={() => handleDeleteCategory(item)}
-          style={styles.deleteButton}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.deleteText}>Delete</Text>
-        </TouchableOpacity>
+        <View style={styles.categoryInfo}>
+          <View style={styles.categoryIconContainer}>
+            <Text style={styles.categoryIcon}>🏷️</Text>
+          </View>
+          <Text style={[styles.categoryText, { color: theme.text }]}>
+            {item}
+          </Text>
+        </View>
+
+        {!defaultCategories.includes(item) && (
+          <TouchableOpacity
+            onPress={() => handleDeleteCategory(item)}
+            style={styles.deleteButton}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.deleteButtonIcon}>🗑️</Text>
+          </TouchableOpacity>
+        )}
       </View>
-    </View>
+    </Animated.View>
   );
 
   const renderHeader = () => (
@@ -277,15 +216,17 @@ const ManageCategoriesScreen = () => {
         },
       ]}
     >
-      <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-        Welcome to
-      </Text>
-      <Text style={[styles.appName, { color: theme.text }]}>
-        <Text style={styles.zennyAccent}>Categories</Text>
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Personalize your expense tracking
-      </Text>
+      <View style={styles.headerContent}>
+        <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+          Welcome to
+        </Text>
+        <Text style={[styles.appName, { color: theme.text }]}>
+          <Text style={styles.zennyAccent}>Categories</Text>
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          Organize and manage your expense categories
+        </Text>
+      </View>
     </Animated.View>
   );
 
@@ -306,129 +247,94 @@ const ManageCategoriesScreen = () => {
         },
       ]}
     >
-      <TextInput
-        placeholder="Add custom category..."
-        placeholderTextColor={theme.textSecondary}
-        value={newCategory}
-        onChangeText={setNewCategory}
-        style={[
-          styles.input,
-          {
-            borderColor: theme.textSecondary + "30",
-            color: theme.text,
-            backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-            shadowColor: theme.text,
-          },
-        ]}
-      />
+      <View style={styles.addSectionHeader}>
+        <Text style={[styles.addSectionTitle, { color: theme.text }]}>
+          Add New Category
+        </Text>
+        <Text
+          style={[styles.addSectionSubtitle, { color: theme.textSecondary }]}
+        >
+          Create custom categories or browse from our collection
+        </Text>
+      </View>
+
+      <View style={styles.inputContainer}>
+        <TextInput
+          placeholder="Enter custom category name..."
+          placeholderTextColor={theme.textSecondary}
+          value={newCategory}
+          onChangeText={setNewCategory}
+          style={[
+            styles.input,
+            {
+              borderColor: theme.textSecondary + "20",
+              color: theme.text,
+              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+              shadowColor: theme.text,
+            },
+          ]}
+        />
+
+        <TouchableOpacity
+          onPress={handleAddCategory}
+          style={[
+            styles.addCustomButton,
+            {
+              backgroundColor: newCategory.trim() ? "#4CAF50" : "#E0E0E0",
+            },
+          ]}
+          activeOpacity={0.8}
+          disabled={!newCategory.trim()}
+        >
+          <Text
+            style={[
+              styles.addCustomButtonText,
+              { color: newCategory.trim() ? "#FFFFFF" : "#666666" },
+            ]}
+          >
+            Add
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.dividerContainer}>
+        <View
+          style={[
+            styles.divider,
+            { backgroundColor: theme.textSecondary + "20" },
+          ]}
+        />
+        <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
+          or
+        </Text>
+        <View
+          style={[
+            styles.divider,
+            { backgroundColor: theme.textSecondary + "20" },
+          ]}
+        />
+      </View>
 
       <TouchableOpacity
-        onPress={handleAddCategory}
+        onPress={openCategoryModal}
         style={[
-          styles.addButton,
+          styles.browseButton,
           {
-            backgroundColor: "#4CAF50",
+            backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
+            borderColor: theme.textSecondary + "20",
+            shadowColor: theme.text,
           },
         ]}
         activeOpacity={0.8}
       >
-        <Text style={styles.addButtonText}>➕ Add Custom</Text>
+        <Text style={styles.browseButtonIcon}>📋</Text>
+        <Text style={[styles.browseButtonText, { color: theme.text }]}>
+          Browse Categories
+        </Text>
+        <Text style={styles.browseButtonArrow}>→</Text>
       </TouchableOpacity>
     </Animated.View>
   );
-
-  const renderCategoryGroup = ({ item: group }) => {
-    const isExpanded = expandedGroups.has(group.title);
-    const availableInGroup = group.categories.filter(
-      (cat) => !categories.includes(cat)
-    );
-
-    console.log(
-      `Group: ${group.title}, Available: ${availableInGroup.length}, Total: ${group.categories.length}`
-    );
-
-    // Show all groups initially, even if some categories are already added
-    // This helps users see what's available and what they already have
-    return (
-      <View style={styles.groupContainer}>
-        <TouchableOpacity
-          style={[
-            styles.groupHeader,
-            {
-              backgroundColor: darkMode ? theme.cardBackground : "#f0f0f0",
-              borderColor: darkMode ? theme.textSecondary + "30" : "#e0e0e0",
-            },
-          ]}
-          onPress={() => toggleGroupExpansion(group.title)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.groupTitle, { color: theme.text }]}>
-            {group.title}
-          </Text>
-          <Text style={[styles.expandIcon, { color: theme.textSecondary }]}>
-            {isExpanded ? "▼" : "▶"}
-          </Text>
-        </TouchableOpacity>
-
-        {isExpanded && (
-          <View style={styles.groupContent}>
-            {group.categories.map((category) => {
-              const isSelected = selectedCategories.includes(category);
-              const isAlreadyAdded = categories.includes(category);
-
-              return (
-                <TouchableOpacity
-                  key={category}
-                  style={[
-                    styles.selectionItem,
-                    {
-                      backgroundColor: darkMode
-                        ? theme.cardBackground
-                        : "#FFFFFF",
-                      borderColor: isSelected
-                        ? "#4CAF50"
-                        : theme.textSecondary + "30",
-                      opacity: isAlreadyAdded ? 0.5 : 1,
-                    },
-                  ]}
-                  onPress={() =>
-                    !isAlreadyAdded && toggleCategorySelection(category)
-                  }
-                  disabled={isAlreadyAdded}
-                  activeOpacity={0.8}
-                >
-                  <Text
-                    style={[
-                      styles.selectionItemText,
-                      {
-                        color: isAlreadyAdded
-                          ? theme.textSecondary
-                          : theme.text,
-                        fontWeight: isSelected ? "700" : "500",
-                      },
-                    ]}
-                  >
-                    {category}
-                  </Text>
-                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
-                  {isAlreadyAdded && (
-                    <Text
-                      style={[
-                        styles.alreadyAdded,
-                        { color: theme.textSecondary },
-                      ]}
-                    >
-                      Added
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </View>
-    );
-  };
 
   return (
     <SafeAreaView
@@ -437,6 +343,7 @@ const ManageCategoriesScreen = () => {
       {categories.length === 0 ? (
         <>
           {renderHeader()}
+          {renderAddSection()}
           <View style={styles.categoriesContainer}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
               Your Categories
@@ -449,21 +356,10 @@ const ManageCategoriesScreen = () => {
               <Text
                 style={[styles.emptyStateText, { color: theme.textSecondary }]}
               >
-                Choose from our curated list or create your own custom
-                categories
+                Add your first category above to get started
               </Text>
-              <TouchableOpacity
-                style={[styles.chooseButton, { backgroundColor: "#4CAF50" }]}
-                onPress={openCategoryModal}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.chooseButtonText}>
-                  🎯 Choose Categories
-                </Text>
-              </TouchableOpacity>
             </View>
           </View>
-          {renderAddSection()}
           <View style={styles.bottomSpacing} />
         </>
       ) : (
@@ -474,23 +370,12 @@ const ManageCategoriesScreen = () => {
           ListHeaderComponent={
             <>
               {renderHeader()}
-              <View style={styles.categoriesContainer}>
-                <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                    Your Categories ({categories.length})
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.addMoreButton, { borderColor: "#4CAF50" }]}
-                    onPress={openCategoryModal}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.addMoreText, { color: "#4CAF50" }]}>
-                      + Add More
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
               {renderAddSection()}
+              <View style={styles.categoriesContainer}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Your Categories
+                </Text>
+              </View>
             </>
           }
           ListFooterComponent={<View style={styles.bottomSpacing} />}
@@ -502,129 +387,127 @@ const ManageCategoriesScreen = () => {
       {/* Category Selection Modal */}
       <Modal
         visible={showCategoryModal}
-        transparent={true}
-        animationType="none"
+        animationType="slide"
         onRequestClose={closeCategoryModal}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+        <SafeAreaView
+          style={[styles.modalContainer, { backgroundColor: theme.background }]}
         >
-          <View
-            style={{
-              width: "98%",
-              maxHeight: "95%",
-              backgroundColor: "#fff",
-              borderRadius: 20,
-              padding: 20,
-              borderWidth: 4,
-              borderColor: "red", // Debug border
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: "bold",
-                marginBottom: 16,
-                color: "#222",
-                textAlign: "center",
-              }}
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={closeCategoryModal}
+              style={styles.backButton}
             >
-              Choose Categories
+              <Text style={[styles.backButtonText, { color: theme.text }]}>
+                ← Back
+              </Text>
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Browse Categories
             </Text>
-            <ScrollView style={{ flexGrow: 0, marginBottom: 16 }}>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          {/* Content */}
+          <View style={styles.modalContent}>
+            <Text
+              style={[styles.modalSubtitle, { color: theme.textSecondary }]}
+            >
+              Select the categories you want to add to your list
+            </Text>
+
+            <ScrollView
+              style={styles.modalScrollView}
+              showsVerticalScrollIndicator={false}
+            >
               {availableCategories.map((category) => {
-                const isAlreadyAdded = categories.includes(category);
                 const isSelected = selectedCategories.includes(category);
+                const isAlreadyAdded = categories.includes(category);
+
                 return (
                   <TouchableOpacity
                     key={category}
-                    style={{
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
-                      backgroundColor: isAlreadyAdded
-                        ? "#eee"
-                        : isSelected
-                        ? "#e6f7ff"
-                        : "#f9f9f9",
-                      marginBottom: 8,
-                      borderRadius: 10,
-                      borderWidth: 1,
-                      borderColor: isSelected ? "#007aff" : "#eee",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      opacity: isAlreadyAdded ? 0.5 : 1,
-                    }}
-                    onPress={() => {
-                      if (isAlreadyAdded) return;
-                      setSelectedCategories((prev) =>
-                        prev.includes(category)
-                          ? prev.filter((c) => c !== category)
-                          : [...prev, category]
-                      );
-                    }}
+                    style={[
+                      styles.modalItem,
+                      {
+                        backgroundColor: darkMode
+                          ? theme.cardBackground
+                          : "#FFFFFF",
+                        borderColor: isSelected
+                          ? "#4CAF50"
+                          : theme.textSecondary + "20",
+                        opacity: isAlreadyAdded ? 0.6 : 1,
+                      },
+                    ]}
+                    onPress={() =>
+                      !isAlreadyAdded && toggleCategorySelection(category)
+                    }
                     disabled={isAlreadyAdded}
                     activeOpacity={0.7}
                   >
-                    <Text
-                      style={{
-                        color: isAlreadyAdded ? "#888" : "#007aff",
-                        fontWeight: "600",
-                        fontSize: 16,
-                        flex: 1,
-                      }}
-                    >
-                      {category}
-                    </Text>
-                    {isSelected && (
+                    <View style={styles.modalItemContent}>
                       <Text
-                        style={{
-                          color: "#007aff",
-                          fontSize: 20,
-                          marginLeft: 8,
-                        }}
+                        style={[
+                          styles.modalItemText,
+                          {
+                            color: isAlreadyAdded
+                              ? theme.textSecondary
+                              : theme.text,
+                          },
+                        ]}
                       >
-                        ✓
+                        {category}
                       </Text>
+                      {isAlreadyAdded && (
+                        <View style={styles.addedBadge}>
+                          <Text style={styles.addedBadgeText}>Added</Text>
+                        </View>
+                      )}
+                    </View>
+                    {isSelected && (
+                      <View style={styles.checkmarkContainer}>
+                        <Text style={styles.checkmark}>✓</Text>
+                      </View>
                     )}
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.modalFooter}>
             <TouchableOpacity
-              style={{
-                marginTop: 8,
-                paddingVertical: 14,
-                borderRadius: 10,
-                backgroundColor:
-                  selectedCategories.length > 0 ? "#4CAF50" : "#ccc",
-                alignItems: "center",
-              }}
-              onPress={() => {
-                if (selectedCategories.length === 0) {
-                  setSelectedCategories([]);
-                  closeCategoryModal();
-                  return;
-                }
-                selectedCategories.forEach((cat) => {
-                  if (!categories.includes(cat)) addCategory(cat);
-                });
-                setSelectedCategories([]);
-                closeCategoryModal();
-              }}
+              style={[
+                styles.modalButton,
+                {
+                  backgroundColor:
+                    selectedCategories.length > 0 ? "#4CAF50" : "#E0E0E0",
+                },
+              ]}
+              onPress={handleAddSelectedCategories}
+              disabled={selectedCategories.length === 0}
+              activeOpacity={0.8}
             >
-              <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+              <Text
+                style={[
+                  styles.modalButtonText,
+                  {
+                    color:
+                      selectedCategories.length > 0 ? "#FFFFFF" : "#666666",
+                  },
+                ]}
+              >
                 {selectedCategories.length === 0
-                  ? "Go Back"
-                  : `Add ${selectedCategories.length} Selected`}
+                  ? "No categories selected"
+                  : `Add ${selectedCategories.length} category${
+                      selectedCategories.length > 1 ? "ies" : "y"
+                    }`}
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -634,43 +517,77 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: spacing.screen,
+  },
   header: {
     alignItems: "center",
-    paddingVertical: 40,
-    paddingTop: 20,
+    paddingVertical: 32,
+    paddingTop: 16,
+  },
+  headerContent: {
+    alignItems: "center",
+    maxWidth: 300,
   },
   welcomeText: {
     fontSize: 16,
-    fontWeight: "400",
+    fontWeight: "500",
     marginBottom: 8,
+    opacity: 0.8,
   },
   appName: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: "800",
-    marginBottom: 8,
+    marginBottom: 12,
+    textAlign: "center",
   },
   zennyAccent: {
     color: "#4CAF50",
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "400",
     textAlign: "center",
+    lineHeight: 22,
+    opacity: 0.7,
   },
   addSection: {
     marginBottom: 32,
+    paddingHorizontal: spacing.screen,
+  },
+  addSectionHeader: {
+    marginBottom: 20,
+  },
+  addSectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  addSectionSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
   },
   input: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: radius.medium,
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 16,
+    fontWeight: "500",
+    marginRight: 12,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.06,
         shadowRadius: 4,
       },
       android: {
@@ -678,10 +595,13 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  addButton: {
-    paddingVertical: 16,
+  addCustomButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: radius.medium,
     alignItems: "center",
+    justifyContent: "center",
+    minWidth: 80,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 2 },
@@ -693,50 +613,84 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  addButtonText: {
-    color: "#FFFFFF",
+  addCustomButtonText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginHorizontal: 16,
+    opacity: 0.6,
+  },
+  browseButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: radius.medium,
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  browseButtonIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  browseButtonText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  browseButtonArrow: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#4CAF50",
   },
   categoriesContainer: {
     marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
+    paddingHorizontal: spacing.screen,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
-    marginLeft: 4,
-  },
-  addMoreButton: {
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radius.small,
-  },
-  addMoreText: {
-    fontSize: 12,
-    fontWeight: "600",
+    marginBottom: 20,
+    marginTop: 8,
   },
   categoriesList: {
     paddingBottom: 20,
   },
   categoryCard: {
     borderRadius: radius.large,
-    padding: 16,
+    padding: 18,
     marginBottom: 12,
+    marginHorizontal: spacing.screen,
     ...Platform.select({
       ios: {
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
     }),
   },
@@ -745,46 +699,171 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  categoryInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  categoryIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#4CAF50" + "20",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  categoryIcon: {
+    fontSize: 18,
+  },
   categoryText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "600",
     flex: 1,
   },
   deleteButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radius.small,
-    backgroundColor: "#FF3B30",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FF3B30" + "20",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  deleteText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
+  deleteButtonIcon: {
+    fontSize: 16,
   },
   emptyState: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 60,
     paddingHorizontal: 40,
   },
   emptyStateIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+    fontSize: 64,
+    marginBottom: 20,
+    opacity: 0.8,
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: "center",
   },
   emptyStateText: {
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: 24,
+    opacity: 0.7,
   },
-  chooseButton: {
+  bottomSpacing: {
+    height: 40,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: spacing.screen,
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
+  },
+  backButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  headerSpacer: {
+    width: 60,
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: spacing.screen,
+    paddingTop: 20,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalScrollView: {
+    flex: 1,
+  },
+  modalItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: radius.medium,
+    marginBottom: 12,
+    borderWidth: 2,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  modalItemContent: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  modalItemText: {
+    fontSize: 16,
+    fontWeight: "600",
+    flex: 1,
+  },
+  addedBadge: {
+    backgroundColor: "#E0E0E0",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 12,
+  },
+  addedBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#666666",
+  },
+  checkmarkContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#4CAF50",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 12,
+  },
+  checkmark: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  modalFooter: {
+    paddingHorizontal: spacing.screen,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
+  },
+  modalButton: {
+    paddingVertical: 16,
     borderRadius: radius.medium,
     alignItems: "center",
     ...Platform.select({
@@ -798,136 +877,9 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  chooseButtonText: {
-    color: "#FFFFFF",
+  modalButtonText: {
     fontSize: 16,
     fontWeight: "700",
-  },
-  bottomSpacing: {
-    height: 40,
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    width: "100%",
-    maxHeight: "80%",
-    borderRadius: radius.large,
-    padding: 20,
-    borderWidth: 2, // Debug border
-    borderColor: "red", // Debug border
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  closeButton: {
-    fontSize: 24,
-    fontWeight: "600",
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  selectionList: {
-    flex: 1,
-  },
-  groupContainer: {
-    marginBottom: 12,
-  },
-  groupHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: radius.medium,
-    borderWidth: 1,
-  },
-  groupTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  expandIcon: {
-    fontSize: 20,
-  },
-  groupContent: {
-    paddingLeft: 16,
-    paddingRight: 8,
-    paddingBottom: 12,
-  },
-  selectionItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: radius.medium,
-    padding: 16,
-    marginBottom: 8,
-  },
-  selectionItemText: {
-    fontSize: 16,
-    fontWeight: "500",
-    flex: 1,
-  },
-  checkmark: {
-    color: "#4CAF50",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  alreadyAdded: {
-    fontSize: 14,
-    fontStyle: "italic",
-  },
-  modalFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    borderWidth: 1,
-    paddingVertical: 12,
-    borderRadius: radius.medium,
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  confirmButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: radius.medium,
-    alignItems: "center",
-  },
-  confirmButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });
 

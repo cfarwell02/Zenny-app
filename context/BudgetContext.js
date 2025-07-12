@@ -54,13 +54,10 @@ export const BudgetProvider = ({ children }) => {
 
   const checkAndNotifyThreshold = async (category, spent) => {
     const catBudget = categoryBudgets[category];
-    // Only check if budget exists, has a positive amount, and is properly configured
-    if (!catBudget || !catBudget.amount || catBudget.amount <= 0) return false;
-
+    if (!catBudget || !catBudget.amount) return;
     const threshold = Number(catBudget.threshold) || 80;
     const notified = catBudget.notified;
     const percentSpent = (spent / catBudget.amount) * 100;
-
     if (percentSpent >= threshold && !notified) {
       // Trigger notification (implementation in screen)
       const updatedBudgets = {
@@ -85,15 +82,12 @@ export const BudgetProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    // Only ensure categories are tracked if they already have budget data
-    // Don't create default entries for categories without budgets
+    // Ensure all categories are tracked in categoryBudgets
     setCategoryBudgets((prev) => {
       const updated = { ...prev };
       categories.forEach((cat) => {
-        // Only create entry if it doesn't exist at all
-        if (!(cat in updated)) {
-          // Don't create default entries - let them be undefined until user sets a budget
-          // This prevents notifications for categories without actual budgets
+        if (typeof updated[cat] !== "object") {
+          updated[cat] = { amount: 0, threshold: 80, notified: false };
         }
       });
       return updated;

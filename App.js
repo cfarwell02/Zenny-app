@@ -20,6 +20,7 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldDismissBanner: false, // Keep notification in panel
   }),
 });
 

@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useEffect, useState } from "react";
+import React, { useContext, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,6 @@ import {
   Dimensions,
   Animated,
   ScrollView,
-  Alert,
-  ActivityIndicator,
 } from "react-native";
 import { ThemeContext } from "../context/ThemeContext";
 import { darkMode } from "../context/ThemeContext";
@@ -23,27 +21,13 @@ import * as Notifications from "expo-notifications";
 import { BudgetContext } from "../context/BudgetContext";
 import { NotificationContext } from "../context/NotificationContext";
 import { useCurrency } from "../context/CurrencyContext";
-import { DataContext } from "../context/DataContext";
-import {
-  exportDataAsCSV,
-  exportDataAsJSON,
-  exportDataAsPDF,
-  getExportOptions,
-} from "../utils/exportData";
-import {
-  lightHaptic,
-  mediumHaptic,
-  hapticPatterns,
-} from "../utils/hapticFeedback";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 const HomeScreen = ({ navigation }) => {
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
-  const { formatCurrency, convertCurrency, selectedCurrency } = useCurrency();
-  const { userData } = useContext(DataContext);
-  const [isExporting, setIsExporting] = useState(false);
+  const { formatCurrency, convertCurrency } = useCurrency();
 
   // Animation values
   const NUM_ANIM_SECTIONS = 8; // 1 balance card + 6 menu cards + 1 quick actions
@@ -54,8 +38,7 @@ const HomeScreen = ({ navigation }) => {
 
   const { receipts } = useContext(ReceiptContext);
   const { incomeList } = useContext(IncomeContext);
-  const { checkAndNotifyThreshold, categoryBudgets } =
-    useContext(BudgetContext);
+
   const { notificationsEnabled } = useContext(NotificationContext);
 
   // Helper: get current month/year
@@ -162,77 +145,8 @@ const HomeScreen = ({ navigation }) => {
     Animated.stagger(200, cardAnimations).start();
   }, []);
 
-  useEffect(() => {
-    // Check thresholds for all categories
-    if (!notificationsEnabled) return;
-
-    // Only check categories that have actual budgets set (amount > 0)
-    Object.entries(categorySpent).forEach(([category, spent]) => {
-      const catBudget = categoryBudgets[category];
-      // Only check if budget exists and has a positive amount
-      if (catBudget && catBudget.amount && catBudget.amount > 0) {
-        const triggered = checkAndNotifyThreshold(category, spent);
-        if (triggered) {
-          Notifications.scheduleNotificationAsync({
-            content: {
-              title: "Budget Alert",
-              body: `You have exceeded your threshold for ${category}!`,
-            },
-            trigger: null,
-          });
-        }
-      }
-    });
-  }, [receipts, notificationsEnabled, categoryBudgets]);
-
-  const handleQuickExport = async () => {
-    lightHaptic(); // Light haptic for button press
-    if (!userData || Object.keys(userData).length === 0) {
-      hapticPatterns.errorOccurred(); // Error haptic for no data
-      Alert.alert("No Data", "There's no data to export.");
-      return;
-    }
-
-    const exportOptions = getExportOptions();
-    Alert.alert("Export Data", "Choose export format:", [
-      ...exportOptions.map((option) => ({
-        text: option.label,
-        onPress: () => performQuickExport(option.value),
-      })),
-      { text: "Cancel", style: "cancel" },
-    ]);
-  };
-
-  const performQuickExport = async (format) => {
-    setIsExporting(true);
-    try {
-      let result;
-      if (format === "csv") {
-        result = await exportDataAsCSV(userData, selectedCurrency);
-      } else if (format === "json") {
-        result = await exportDataAsJSON(userData, selectedCurrency);
-      } else if (format === "pdf") {
-        result = await exportDataAsPDF(userData, selectedCurrency);
-      }
-
-      if (result.success) {
-        hapticPatterns.dataExported(); // Success haptic for export
-        Alert.alert(
-          "Export Successful",
-          `Your data has been exported as ${result.fileName}`,
-          [{ text: "OK" }]
-        );
-      }
-    } catch (error) {
-      console.error("Export error:", error);
-      hapticPatterns.errorOccurred(); // Error haptic
-      Alert.alert("Export Failed", "Failed to export data. Please try again.", [
-        { text: "OK" },
-      ]);
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  // Removed the blanket threshold check - notifications are now handled in AddReceiptScreen.js
+  // for the specific category being added, not all categories
 
   const menuItems = [
     {
@@ -296,10 +210,15 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.headerTop}>
         <Text style={[styles.appName, { color: theme.text }]}>Zenny</Text>
         <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
-          <Text style={{ fontSize: 28 }}>⚙️</Text>
+          <Text style={{ fontSize: 20 }}>⚙️</Text>
         </TouchableOpacity>
       </View>
-      <Text style={[styles.headerSubtitle, { color: theme.subtleText }]}>
+      <Text
+        style={[
+          styles.headerSubtitle,
+          { color: darkMode ? "#fff" : theme.textSecondary },
+        ]}
+      >
         Your personal finance dashboard
       </Text>
     </Animated.View>
@@ -322,7 +241,12 @@ const HomeScreen = ({ navigation }) => {
     >
       <View style={styles.balanceStats}>
         <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: theme.subtleText }]}>
+          <Text
+            style={[
+              styles.statLabel,
+              { color: darkMode ? "#fff" : theme.textSecondary },
+            ]}
+          >
             This Month
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
@@ -331,7 +255,12 @@ const HomeScreen = ({ navigation }) => {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: theme.subtleText }]}>
+          <Text
+            style={[
+              styles.statLabel,
+              { color: darkMode ? "#fff" : theme.textSecondary },
+            ]}
+          >
             Income
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
@@ -390,7 +319,7 @@ const HomeScreen = ({ navigation }) => {
       {recentActivity.length === 0 ? (
         <Text
           style={{
-            color: theme.subtleText,
+            color: theme.textSecondary,
             textAlign: "center",
             marginVertical: 16,
           }}
@@ -416,17 +345,14 @@ const HomeScreen = ({ navigation }) => {
               </View>
               <View style={styles.transactionInfo}>
                 <Text
-                  style={[styles.transactionName, { color: theme.text }]}
+                  style={styles.transactionName}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
                   {transaction.name}
                 </Text>
                 <Text
-                  style={[
-                    styles.transactionCategory,
-                    { color: theme.subtleText },
-                  ]}
+                  style={styles.transactionCategory}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
@@ -436,7 +362,7 @@ const HomeScreen = ({ navigation }) => {
               </View>
             </View>
             <Text
-              style={[styles.transactionAmount, { color: theme.text }]}
+              style={styles.transactionAmount}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
@@ -471,7 +397,7 @@ const HomeScreen = ({ navigation }) => {
       {topSpending.length === 0 ? (
         <Text
           style={{
-            color: theme.subtleText,
+            color: theme.textSecondary,
             textAlign: "center",
             marginVertical: 16,
           }}
@@ -487,14 +413,20 @@ const HomeScreen = ({ navigation }) => {
               />
               <View style={styles.categoryInfo}>
                 <Text
-                  style={[styles.categoryName, { color: theme.text }]}
+                  style={[
+                    styles.categoryName,
+                    darkMode ? { color: "#fff" } : {},
+                  ]}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
                   {cat.category}
                 </Text>
                 <Text
-                  style={[styles.categoryAmount, { color: theme.subtleText }]}
+                  style={[
+                    styles.categoryAmount,
+                    darkMode ? { color: "#fff" } : {},
+                  ]}
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
@@ -558,7 +490,7 @@ const HomeScreen = ({ navigation }) => {
                 {item.label}
               </Text>
               <Text
-                style={[styles.menuDescription, { color: theme.subtleText }]}
+                style={[styles.menuDescription, { color: theme.textSecondary }]}
                 numberOfLines={2}
                 ellipsizeMode="tail"
               >
@@ -597,10 +529,7 @@ const HomeScreen = ({ navigation }) => {
               shadowColor: theme.text,
             },
           ]}
-          onPress={() => {
-            lightHaptic();
-            navigation.navigate("Add Receipt");
-          }}
+          onPress={() => navigation.navigate("Add Receipt")}
         >
           <Text style={styles.quickActionIcon}>📷</Text>
           <Text style={[styles.quickActionText, { color: theme.text }]}>
@@ -615,10 +544,7 @@ const HomeScreen = ({ navigation }) => {
               shadowColor: theme.text,
             },
           ]}
-          onPress={() => {
-            lightHaptic();
-            navigation.navigate("My Budget");
-          }}
+          onPress={() => navigation.navigate("My Budget")}
         >
           <Text style={styles.quickActionIcon}>📊</Text>
           <Text style={[styles.quickActionText, { color: theme.text }]}>
@@ -633,16 +559,11 @@ const HomeScreen = ({ navigation }) => {
               shadowColor: theme.text,
             },
           ]}
-          onPress={handleQuickExport}
-          disabled={isExporting}
+          onPress={() => navigation.navigate("Settings")}
         >
-          {isExporting ? (
-            <ActivityIndicator size="small" color={theme.text} />
-          ) : (
-            <Text style={styles.quickActionIcon}>📤</Text>
-          )}
+          <Text style={styles.quickActionIcon}>📤</Text>
           <Text style={[styles.quickActionText, { color: theme.text }]}>
-            {isExporting ? "Exporting..." : "Export Data"}
+            Export Data
           </Text>
         </TouchableOpacity>
       </View>
@@ -679,7 +600,7 @@ const HomeScreen = ({ navigation }) => {
       {recentActivity.length === 0 ? (
         <Text
           style={{
-            color: theme.subtleText,
+            color: theme.textSecondary,
             textAlign: "center",
             marginVertical: 16,
           }}
@@ -713,7 +634,7 @@ const HomeScreen = ({ navigation }) => {
               </Text>
               <Text
                 style={{
-                  color: theme.subtleText,
+                  color: darkMode ? "#fff" : theme.textSecondary,
                   fontSize: 12,
                 }}
                 numberOfLines={1}
@@ -1018,6 +939,7 @@ const styles = StyleSheet.create({
   transactionCategory: {
     fontSize: 12,
     fontWeight: "400",
+    color: "#888",
   },
   transactionAmount: {
     fontSize: 16,
@@ -1084,6 +1006,7 @@ const styles = StyleSheet.create({
   categoryAmount: {
     fontSize: 14,
     fontWeight: "400",
+    color: "#888",
   },
 });
 

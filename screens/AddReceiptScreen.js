@@ -27,21 +27,23 @@ import { BudgetContext } from "../context/BudgetContext";
 import { CategoryContext } from "../context/CategoryContext";
 import * as Notifications from "expo-notifications";
 import { NotificationContext } from "../context/NotificationContext";
+import { useCurrency } from "../context/CurrencyContext";
 import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-const AddReceiptScreen = () => {
+const AddReceiptScreen = ({ route }) => {
   const [image, setImage] = useState(null);
   const [amount, setAmount] = useState("");
   const [tag, setTag] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [editingReceipt, setEditingReceipt] = useState(null);
 
   const { categories } = useContext(CategoryContext);
-  const { addReceipt } = useContext(ReceiptContext);
+  const { addReceipt, updateReceipt } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
   const {
     categoryBudgets,
@@ -52,6 +54,7 @@ const AddReceiptScreen = () => {
   } = useContext(BudgetContext);
   const theme = darkMode ? darkTheme : lightTheme;
   const { notificationsEnabled } = useContext(NotificationContext);
+  const { formatCurrency, convertCurrency } = useCurrency();
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -78,6 +81,25 @@ const AddReceiptScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
+  }, []);
+
+  // Handle editing receipt
+  useEffect(() => {
+    if (route.params?.receiptToEdit) {
+      const receipt = route.params.receiptToEdit;
+      setEditingReceipt(receipt);
+      setImage(receipt.image);
+      setAmount(receipt.amount.toString());
+      setTag(receipt.tag || "");
+      setSelectedCategory(receipt.category);
+    }
+  }, [route.params?.receiptToEdit]);
+
+  // Clear editing state when component unmounts
+  useEffect(() => {
+    return () => {
+      setEditingReceipt(null);
+    };
   }, []);
 
   const animateButton = () => {
@@ -113,87 +135,113 @@ const AddReceiptScreen = () => {
     setIsLoading(true);
     animateButton();
 
-    const newReceipt = {
-      id: Date.now(),
-      image,
-      amount: parsedAmount,
-      category: selectedCategory,
-      date: new Date().toISOString(),
-      tag: tag.trim(),
-    };
+    if (editingReceipt) {
+      // Update existing receipt
+      const updatedReceipt = {
+        image,
+        amount: parsedAmount,
+        category: selectedCategory,
+        tag: tag.trim(),
+      };
 
-    const expense = {
-      amount: parsedAmount,
-      category: selectedCategory,
-      date: new Date().toISOString(),
-      tag: tag.trim(),
-    };
+      await updateReceipt(editingReceipt.id, updatedReceipt);
+      Alert.alert("Success", "Receipt updated successfully!");
+    } else {
+      // Add new receipt
+      const newReceipt = {
+        id: Date.now(),
+        image,
+        amount: parsedAmount,
+        category: selectedCategory,
+        date: new Date().toISOString(),
+        tag: tag.trim(),
+      };
 
-    // Save the new expense and receipt (await for persistence)
-    await addReceipt(newReceipt);
+      const expense = {
+        amount: parsedAmount,
+        category: selectedCategory,
+        date: new Date().toISOString(),
+        tag: tag.trim(),
+      };
+
+      // Save the new expense and receipt (await for persistence)
+      await addReceipt(newReceipt);
+
+      Alert.alert("Success", "Receipt saved successfully!");
+
+      // Calculate total spent for the category including this new expense
+      const categoryExpenses = [...expenses, expense].filter(
+        (e) => e.category === selectedCategory
+      );
+      const totalSpent = categoryExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+      // Get the correct budget object for the selected category
+      const budgetObj =
+        categoryBudgets[selectedCategory] &&
+        typeof categoryBudgets[selectedCategory] === "object"
+          ? categoryBudgets[selectedCategory]
+          : { amount: 0, threshold: 80, notified: false };
+      const budgetLimit = budgetObj.amount;
+      const thresholdValue = budgetObj.threshold;
+      const percentSpent = budgetLimit ? (totalSpent / budgetLimit) * 100 : 0;
+
+      // Debug logs
+      console.log("Budget Limit:", budgetLimit);
+      console.log("Threshold (%):", thresholdValue);
+      console.log("Total Spent:", totalSpent);
+      console.log("Percent Spent:", percentSpent);
+      console.log("Notifications Enabled:", notificationsEnabled);
+      console.log("Already Notified:", budgetObj.notified);
+
+      if (
+        budgetLimit &&
+        percentSpent >= thresholdValue &&
+        notificationsEnabled
+      ) {
+        const remainingBudget = budgetLimit - totalSpent;
+        const remainingFormatted = formatCurrency(
+          convertCurrency(remainingBudget)
+        );
+
+        // Check notification permissions first
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== "granted") {
+          const { status: newStatus } =
+            await Notifications.requestPermissionsAsync();
+          if (newStatus !== "granted") {
+            console.log("Notification permission denied");
+            return;
+          }
+        }
+
+        try {
+          const notificationId = await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "⚠️ Budget Threshold Exceeded",
+              body: `You have ${remainingFormatted} left in your ${selectedCategory} budget.`,
+              sound: true,
+              priority: "high",
+              sticky: true, // Make notification persistent
+            },
+            trigger: {
+              seconds: 1, // Send after 1 second to ensure it's properly scheduled
+            },
+          });
+
+          console.log("Notification scheduled with ID:", notificationId);
+        } catch (error) {
+          console.error("Error scheduling notification:", error);
+        }
+      }
+    }
 
     // Reset form
     setImage(null);
     setAmount("");
     setTag("");
     setSelectedCategory("");
+    setEditingReceipt(null);
     setIsLoading(false);
-
-    Alert.alert("Success", "Receipt saved successfully!");
-
-    // Calculate total spent for the category including this new expense
-    const categoryExpenses = [...expenses, expense].filter(
-      (e) => e.category === selectedCategory
-    );
-    const totalSpent = categoryExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-    // Get the correct budget object for the selected category
-    const budgetObj =
-      categoryBudgets[selectedCategory] &&
-      typeof categoryBudgets[selectedCategory] === "object"
-        ? categoryBudgets[selectedCategory]
-        : { amount: 0, threshold: 80, notified: false };
-    const budgetLimit = budgetObj.amount;
-    const thresholdValue = budgetObj.threshold;
-    const percentSpent = budgetLimit ? (totalSpent / budgetLimit) * 100 : 0;
-
-    // Debug logs
-    // console.log("Budget Limit:", budgetLimit);
-    // console.log("Threshold (%):", thresholdValue);
-    // console.log("Total Spent:", totalSpent);
-    // console.log("Percent Spent:", percentSpent);
-
-    if (
-      budgetLimit &&
-      budgetLimit > 0 &&
-      percentSpent >= thresholdValue &&
-      notificationsEnabled &&
-      !budgetObj.notified
-    ) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "⚠️ Budget Threshold Reached",
-          body: `You've used ${percentSpent.toFixed(
-            1
-          )}% of your ${selectedCategory} budget.`,
-          sound: true,
-        },
-        trigger: null,
-      });
-      // Mark as notified and persist
-      const updatedBudget = {
-        ...budgetObj,
-        notified: true,
-      };
-      const updatedBudgets = {
-        ...categoryBudgets,
-        [selectedCategory]: updatedBudget,
-      };
-      setCategoryBudgets(updatedBudgets);
-      if (typeof saveBudgets === "function") {
-        await saveBudgets(updatedBudgets);
-      }
-    }
   };
 
   const handleInsertPhoto = async () => {
@@ -270,10 +318,12 @@ const AddReceiptScreen = () => {
               <Text style={styles.headerIcon}>📷</Text>
             </View>
             <Text style={[styles.title, { color: theme.text }]}>
-              Add Receipt
+              {editingReceipt ? "Edit Receipt" : "Add Receipt"}
             </Text>
-            <Text style={[styles.subtitle, { color: theme.subtleText }]}>
-              Capture and categorize your expenses
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              {editingReceipt
+                ? "Update your receipt details"
+                : "Capture and categorize your expenses"}
             </Text>
           </Animated.View>
 
@@ -321,7 +371,7 @@ const AddReceiptScreen = () => {
                 <Text
                   style={[
                     styles.photoPlaceholderSubtext,
-                    { color: theme.subtleText },
+                    { color: theme.textSecondary },
                   ]}
                 >
                   Take a photo or choose from library
@@ -407,7 +457,7 @@ const AddReceiptScreen = () => {
                     <TextInput
                       style={[styles.amountInput, { color: theme.text }]}
                       placeholder="0.00"
-                      placeholderTextColor={theme.subtleText}
+                      placeholderTextColor={theme.textSecondary}
                       keyboardType="numeric"
                       value={amount}
                       onChangeText={setAmount}
@@ -463,7 +513,7 @@ const AddReceiptScreen = () => {
                       },
                     ]}
                     placeholder="e.g., Lunch with Mom"
-                    placeholderTextColor={theme.subtleText}
+                    placeholderTextColor={theme.textSecondary}
                     value={tag}
                     onChangeText={setTag}
                   />
@@ -498,7 +548,11 @@ const AddReceiptScreen = () => {
                 <Text
                   style={[styles.saveButtonText, { color: theme.buttonText }]}
                 >
-                  {isLoading ? "Saving..." : "💾 Save Receipt"}
+                  {isLoading
+                    ? "Saving..."
+                    : editingReceipt
+                    ? "💾 Update Receipt"
+                    : "💾 Save Receipt"}
                 </Text>
               </TouchableOpacity>
             </Animated.View>
