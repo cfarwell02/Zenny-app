@@ -19,6 +19,7 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Onboarding from "../components/Onboarding";
+import CompleteProfile from "./CompleteProfile";
 
 const { width, height } = Dimensions.get("window");
 
@@ -31,6 +32,7 @@ const AuthScreen = ({ onAuthSuccess }) => {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showCompleteProfile, setShowCompleteProfile] = useState(false);
 
   // Make theme optional to avoid potential context issues
   const themeContext = useContext(ThemeContext);
@@ -66,8 +68,8 @@ const AuthScreen = ({ onAuthSuccess }) => {
           email,
           password
         );
-        setShowOnboarding(true); // Always show onboarding after sign-up
-        return; // Do not proceed to main app yet
+        setShowCompleteProfile(true); // Show CompleteProfile after sign-up
+        return;
       } else {
         userCredential = await auth().signInWithEmailAndPassword(
           email,
@@ -142,13 +144,11 @@ const AuthScreen = ({ onAuthSuccess }) => {
     }
   };
 
-  if (showOnboarding) {
+  if (showCompleteProfile) {
     return (
-      <Onboarding
-        onFinish={() => {
-          setShowOnboarding(false);
-          onAuthSuccess?.();
-        }}
+      <CompleteProfile
+        onComplete={() => setShowCompleteProfile(false)}
+        onAuthSuccess={onAuthSuccess}
       />
     );
   }

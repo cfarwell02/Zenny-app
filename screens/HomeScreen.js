@@ -15,6 +15,11 @@ import {
   Dimensions,
   Animated,
   ScrollView,
+  Modal,
+  Pressable,
+  Easing,
+  Alert,
+  TextInput,
 } from "react-native";
 import { ThemeContext } from "../context/ThemeContext";
 import { spacing } from "../constants/spacing";
@@ -28,11 +33,15 @@ import { IncomeContext } from "../context/IncomeContext";
 import { BudgetContext } from "../context/BudgetContext";
 import { NotificationContext } from "../context/NotificationContext";
 import { useCurrency } from "../context/CurrencyContext";
+import { useAuth } from "../context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import firestore from "@react-native-firebase/firestore";
+import auth from "@react-native-firebase/auth";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 const HomeScreen = forwardRef((props, ref) => {
-  const { darkMode } = useContext(ThemeContext);
+  const { darkMode, toggleDarkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
   const { formatCurrency, convertCurrency } = useCurrency();
 
@@ -52,6 +61,7 @@ const HomeScreen = forwardRef((props, ref) => {
   const { incomeList } = useContext(IncomeContext);
   const { categoryBudgets } = useContext(BudgetContext);
   const { notificationsEnabled } = useContext(NotificationContext);
+  const { user, signOut, refreshUser } = useAuth ? useAuth() : { user: null };
 
   const scrollViewRef = useRef();
   useImperativeHandle(ref, () => ({
@@ -246,6 +256,49 @@ const HomeScreen = forwardRef((props, ref) => {
     });
   };
 
+  // Helper to get first letter
+  const getProfileInitial = () => {
+    if (user?.displayName) return user.displayName[0].toUpperCase();
+    if (user?.email) return user.email[0].toUpperCase();
+    return "U";
+  };
+
+  const [profileVisible, setProfileVisible] = useState(false);
+  const sideSheetAnim = useRef(new Animated.Value(1)).current; // 1 = offscreen, 0 = onscreen
+  const screenWidth = Dimensions.get("window").width;
+
+  useEffect(() => {
+    if (profileVisible) {
+      Animated.timing(sideSheetAnim, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(sideSheetAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [profileVisible]);
+
+  const [profileColor, setProfileColor] = useState(theme.primary);
+  useEffect(() => {
+    let unsub;
+    if (user?.uid) {
+      unsub = firestore()
+        .collection("users")
+        .doc(user.uid)
+        .onSnapshot((doc) => {
+          setProfileColor(doc.data()?.profileColor || theme.primary);
+        });
+    }
+    return () => unsub && unsub();
+  }, [user?.uid, theme.primary]);
+
   const renderHeader = () => (
     <Animated.View
       style={[
@@ -273,16 +326,26 @@ const HomeScreen = forwardRef((props, ref) => {
           </Text>
         </View>
         <TouchableOpacity
-          style={[
-            styles.settingsButton,
-            {
-              backgroundColor: theme.surface,
-              borderColor: theme.border,
-            },
-          ]}
-          onPress={() => props.navigation.navigate("Settings")}
+          onPress={() => setProfileVisible(true)}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: profileColor,
+            alignItems: "center",
+            justifyContent: "center",
+            marginLeft: 12,
+          }}
         >
-          <Text style={styles.settingsIcon}>⚙️</Text>
+          <Text
+            style={{
+              color: theme.textInverse,
+              fontSize: 20,
+              fontWeight: "700",
+            }}
+          >
+            {getProfileInitial()}
+          </Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -757,10 +820,349 @@ const HomeScreen = forwardRef((props, ref) => {
     </Animated.View>
   );
 
+  const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState(user?.displayName || "");
+
+  useEffect(() => {
+    if (editProfileVisible) {
+      Animated.timing(sideSheetAnim, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(sideSheetAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [editProfileVisible]);
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
+      {/* Profile Side Sheet - true right-to-left animation, now at root level */}
+      {profileVisible && (
+        <>
+          <Pressable
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "rgba(0,0,0,0.2)",
+              zIndex: 10,
+            }}
+            onPress={() => setProfileVisible(false)}
+          />
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              height: "100%",
+              width: 320,
+              backgroundColor: theme.surface,
+              shadowColor: "#000",
+              shadowOffset: { width: -2, height: 0 },
+              shadowOpacity: 0.15,
+              shadowRadius: 8,
+              elevation: 12,
+              borderTopLeftRadius: 24,
+              borderBottomLeftRadius: 24,
+              padding: 0,
+              justifyContent: "flex-start",
+              alignItems: "stretch",
+              zIndex: 20,
+              transform: [
+                {
+                  translateX: sideSheetAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 320],
+                  }),
+                },
+              ],
+            }}
+          >
+            {/* Profile Section */}
+            <View
+              style={{
+                alignItems: "center",
+                paddingTop: 36,
+                paddingBottom: 16,
+                backgroundColor: profileColor,
+                borderTopLeftRadius: 24,
+              }}
+            >
+              <View
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: theme.surface,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 12,
+                  borderWidth: 2,
+                  borderColor: theme.primary,
+                }}
+              >
+                <Text
+                  style={{
+                    color: theme.primary,
+                    fontSize: 36,
+                    fontWeight: "700",
+                  }}
+                >
+                  {getProfileInitial()}
+                </Text>
+              </View>
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: "700",
+                  color: theme.textInverse,
+                  marginBottom: 2,
+                }}
+              >
+                {user?.displayName || "No Name"}
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 4,
+                }}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={theme.textInverse}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{
+                    fontSize: 15,
+                    color: theme.textInverse,
+                    opacity: 0.8,
+                  }}
+                >
+                  {user?.email || "No Email"}
+                </Text>
+              </View>
+            </View>
+            {/* Divider */}
+            <View
+              style={{
+                height: 1,
+                backgroundColor: theme.border,
+                marginVertical: 0,
+              }}
+            />
+            {/* Actions Section */}
+            <View
+              style={{ flex: 1, padding: 24, justifyContent: "flex-start" }}
+            >
+              {/* Edit Profile Button */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: theme.primary,
+                  borderRadius: 24,
+                  paddingVertical: 14,
+                  paddingHorizontal: 0,
+                  justifyContent: "center",
+                  marginBottom: 16,
+                  width: "100%",
+                }}
+                onPress={() => {
+                  setNewDisplayName(user?.displayName || "");
+                  setEditProfileVisible(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={20}
+                  color={theme.textInverse}
+                  style={{ marginRight: 10 }}
+                />
+                <Text
+                  style={{
+                    color: theme.textInverse,
+                    fontSize: 16,
+                    fontWeight: "700",
+                  }}
+                >
+                  Edit Profile
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+          {/* Edit Profile Modal */}
+          {editProfileVisible && (
+            <Pressable
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                backgroundColor: "rgba(0,0,0,0.25)",
+                zIndex: 30,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              onPress={() => setEditProfileVisible(false)}
+            >
+              <Pressable
+                style={{
+                  width: 320,
+                  backgroundColor: theme.surface,
+                  borderRadius: 24,
+                  padding: 24,
+                  alignItems: "center",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
+                onPress={(e) => e.stopPropagation()}
+              >
+                {/* X Close Button */}
+                <TouchableOpacity
+                  onPress={() => setEditProfileVisible(false)}
+                  style={{
+                    position: "absolute",
+                    top: 16,
+                    right: 16,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: theme.dangerBg,
+                    zIndex: 2,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={{
+                      color: theme.danger,
+                      fontSize: 22,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    ×
+                  </Text>
+                </TouchableOpacity>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontWeight: "700",
+                    color: theme.text,
+                    marginBottom: 18,
+                  }}
+                >
+                  Edit Profile
+                </Text>
+                <TextInput
+                  value={newDisplayName}
+                  onChangeText={setNewDisplayName}
+                  placeholder="Display Name"
+                  placeholderTextColor={theme.textMuted}
+                  style={{
+                    width: "100%",
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderRadius: 12,
+                    padding: 12,
+                    fontSize: 16,
+                    color: theme.text,
+                    marginBottom: 18,
+                  }}
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: theme.primary,
+                    borderRadius: 20,
+                    paddingVertical: 10,
+                    paddingHorizontal: 32,
+                    marginBottom: 16,
+                  }}
+                  onPress={async () => {
+                    try {
+                      if (user && newDisplayName.trim()) {
+                        await user.updateProfile({
+                          displayName: newDisplayName.trim(),
+                        });
+                        await user.reload();
+                        await refreshUser();
+                        Alert.alert("Success", "Display name updated!");
+                        setEditProfileVisible(false);
+                      }
+                    } catch (e) {
+                      Alert.alert("Error", "Could not update display name.");
+                    }
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: theme.textInverse,
+                      fontWeight: "700",
+                      fontSize: 16,
+                    }}
+                  >
+                    Save
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: theme.secondary,
+                    borderRadius: 20,
+                    paddingVertical: 10,
+                    paddingHorizontal: 32,
+                  }}
+                  onPress={async () => {
+                    try {
+                      if (user?.email) {
+                        await auth().sendPasswordResetEmail(user.email);
+                        Alert.alert(
+                          "Password Reset",
+                          "A password reset email has been sent. If you don't see it in your inbox, please check your spam or junk folder."
+                        );
+                      }
+                    } catch (e) {
+                      Alert.alert(
+                        "Error",
+                        "Could not send password reset email."
+                      );
+                    }
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: theme.textInverse,
+                      fontWeight: "700",
+                      fontSize: 16,
+                    }}
+                  >
+                    Change Password
+                  </Text>
+                </TouchableOpacity>
+              </Pressable>
+            </Pressable>
+          )}
+        </>
+      )}
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
@@ -773,7 +1175,6 @@ const HomeScreen = forwardRef((props, ref) => {
         {renderBudgetProgress()}
         {renderSpendingBreakdown()}
         {renderRecentActivity()}
-        <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
   );

@@ -266,6 +266,10 @@ const AddReceiptScreen = ({ route }) => {
     setSelectedCategory("");
     setIncomeType("salary");
     setEditingReceipt(null);
+    setIsRecurring(false);
+    setRecurrence("monthly");
+    setRecurrenceStart(new Date());
+    setIncludePhoto(false);
     setIsLoading(false);
   };
 

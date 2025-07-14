@@ -73,9 +73,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    await auth().currentUser?.reload();
+    setUser(auth().currentUser);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, initializing, error, signUp, signIn, signOut }}
+      value={{
+        user,
+        initializing,
+        error,
+        signUp,
+        signIn,
+        signOut,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

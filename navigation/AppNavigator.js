@@ -17,6 +17,11 @@ import ManageCategoriesScreen from "../screens/ManageCategoriesScreen";
 import IncomeScreen from "../screens/IncomeScreen";
 import SavingsGoalScreen from "../screens/SavingsGoalScreen";
 import TrendsScreen from "../screens/TrendsScreen";
+import AccountScreen from "../screens/AccountScreen";
+import CompleteProfile from "../screens/CompleteProfile";
+import Onboarding from "../components/Onboarding";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import firestore from "@react-native-firebase/firestore";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -199,30 +204,73 @@ const MainTabNavigator = () => {
 const AppNavigator = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileChecked, setProfileChecked] = useState(false);
+  const [needsProfile, setNeedsProfile] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   // Firebase Auth listener
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
-      console.log(
-        "🔥 Auth state changed:",
-        firebaseUser ? "User logged in" : "User logged out"
-      );
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
+      if (firebaseUser) {
+        // Check profile completion
+        let needsProfileUpdate = false;
+        if (!firebaseUser.displayName) {
+          needsProfileUpdate = true;
+        } else {
+          // Check Firestore for profileColor
+          const doc = await firestore()
+            .collection("users")
+            .doc(firebaseUser.uid)
+            .get();
+          if (!doc.exists || !doc.data()?.profileColor) {
+            needsProfileUpdate = true;
+          }
+        }
+        setNeedsProfile(needsProfileUpdate);
+        // Check onboarding
+        const onboardingComplete = await AsyncStorage.getItem(
+          "onboardingComplete"
+        );
+        setNeedsOnboarding(!onboardingComplete);
+        setProfileChecked(true);
+      } else {
+        setProfileChecked(false);
+        setNeedsProfile(false);
+        setNeedsOnboarding(false);
+      }
     });
-
     return unsubscribe;
   }, []);
 
   // Handler for successful authentication
   const handleAuthSuccess = () => {
-    console.log("✅ Auth success handler called");
     // The auth state change will be handled by the useEffect above
-    // No need to do anything here as the user state will update automatically
   };
 
-  if (loading) {
+  if (loading || (user && !profileChecked)) {
     return null; // Optionally show a splash screen
+  }
+
+  if (user && needsProfile) {
+    return (
+      <CompleteProfile
+        onComplete={() => setNeedsProfile(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
+    );
+  }
+
+  if (user && needsOnboarding) {
+    return (
+      <Onboarding
+        onFinish={async () => {
+          await AsyncStorage.setItem("onboardingComplete", "true");
+          setNeedsOnboarding(false);
+        }}
+      />
+    );
   }
 
   return (
@@ -250,6 +298,7 @@ const AppNavigator = () => {
               headerShown: false,
             }}
           />
+          <Stack.Screen name="Account" component={AccountScreen} />
         </>
       ) : (
         <Stack.Screen name="Auth">
