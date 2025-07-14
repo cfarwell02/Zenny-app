@@ -18,8 +18,10 @@ import { BudgetContext } from "../context/BudgetContext";
 import { CategoryContext } from "../context/CategoryContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
-import { radius } from "../constants/radius";
+import { radius, borderRadius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
+import { typography } from "../constants/typography";
+import { elevation } from "../constants/shadows";
 import { useCurrency } from "../context/CurrencyContext";
 import { Picker } from "@react-native-picker/picker";
 
@@ -42,9 +44,9 @@ const ManageBudgetScreen = ({ navigation }) => {
   const [threshold, setThreshold] = useState("");
 
   // Animation values
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const contentAnim = useRef(new Animated.Value(0)).current;
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const formAnim = useRef(new Animated.Value(0)).current;
+  const buttonAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const updatedItems = categories.map((category) => ({
@@ -55,27 +57,24 @@ const ManageBudgetScreen = ({ navigation }) => {
   }, [categories]);
 
   useEffect(() => {
-    // Animate header
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
+    // Staggered entrance animations
+    Animated.stagger(150, [
+      Animated.timing(headerAnim, {
         toValue: 1,
         duration: 800,
         useNativeDriver: true,
       }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
+      Animated.timing(formAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonAnim, {
+        toValue: 1,
+        duration: 800,
         useNativeDriver: true,
       }),
     ]).start();
-
-    // Animate content
-    Animated.timing(contentAnim, {
-      toValue: 1,
-      duration: 600,
-      delay: 300,
-      useNativeDriver: true,
-    }).start();
   }, []);
 
   useEffect(() => {
@@ -122,8 +121,6 @@ const ManageBudgetScreen = ({ navigation }) => {
         Number(newAmount),
         Number(threshold)
       );
-      // Optionally, update threshold if needed (not handled by updateCategoryBudget)
-      // You may want to extend updateCategoryBudget to handle threshold as well
 
       Alert.alert(
         "Saved",
@@ -160,20 +157,24 @@ const ManageBudgetScreen = ({ navigation }) => {
       style={[
         styles.header,
         {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
+          opacity: headerAnim,
+          transform: [
+            {
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [30, 0],
+              }),
+            },
+          ],
         },
       ]}
     >
-      <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-        Welcome to
-      </Text>
-      <Text style={[styles.appName, { color: theme.text }]}>
-        <Text style={styles.zennyAccent}>Budgets</Text>
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Set and manage your spending limits
-      </Text>
+      <View style={styles.headerContent}>
+        <Text style={[styles.title, { color: theme.text }]}>Set Budgets</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+          Configure spending limits for your categories
+        </Text>
+      </View>
     </Animated.View>
   );
 
@@ -182,40 +183,47 @@ const ManageBudgetScreen = ({ navigation }) => {
       style={[
         styles.formContainer,
         {
-          opacity: contentAnim,
+          opacity: formAnim,
           transform: [
             {
-              translateY: contentAnim.interpolate({
+              translateY: formAnim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [20, 0],
+                outputRange: [30, 0],
               }),
             },
           ],
         },
       ]}
     >
-      <View style={styles.formCard}>
+      <View
+        style={[
+          styles.formCard,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Set Budget
+          Budget Configuration
         </Text>
 
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: theme.textSecondary }]}>
-            Select Category
+            Category
           </Text>
           <View
             style={[
               styles.pickerContainer,
               {
-                backgroundColor: theme.input,
+                backgroundColor: theme.surface,
                 borderColor: theme.border,
+                height: 60, // Increased height for better touch area
+                justifyContent: "center",
               },
             ]}
           >
             <Picker
               selectedValue={selectedCategory}
               onValueChange={(itemValue) => setSelectedCategory(itemValue)}
-              style={[{ color: theme.text, height: 50 }]}
+              style={[{ color: theme.text, height: 54 }]} // Increased height
             >
               <Picker.Item label="Choose a category..." value="" />
               {categories.map((category) => (
@@ -227,86 +235,107 @@ const ManageBudgetScreen = ({ navigation }) => {
 
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: theme.textSecondary }]}>
-            Budget Amount ($)
+            Monthly Budget
           </Text>
           <TextInput
             style={[
               styles.input,
               {
-                backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-                borderColor: theme.textSecondary + "30",
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
                 color: theme.text,
-                shadowColor: theme.text,
               },
             ]}
             value={newAmount}
             onChangeText={setNewAmount}
             keyboardType="numeric"
             placeholder="Enter budget amount"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={theme.textMuted}
           />
         </View>
 
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: theme.textSecondary }]}>
-            Threshold (%)
+            Alert Threshold (%)
           </Text>
           <TextInput
             style={[
               styles.input,
               {
-                backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-                borderColor: theme.textSecondary + "30",
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
                 color: theme.text,
-                shadowColor: theme.text,
               },
             ]}
             value={threshold}
             onChangeText={setThreshold}
             keyboardType="numeric"
-            placeholder="Enter threshold percent"
-            placeholderTextColor={theme.textSecondary}
+            placeholder="Enter threshold percentage"
+            placeholderTextColor={theme.textMuted}
             maxLength={3}
           />
         </View>
 
         {selectedCategory && (
-          <View style={styles.currentBudgetContainer}>
-            <Text
-              style={[styles.currentBudgetText, { color: theme.textSecondary }]}
-            >
-              Current budget for {selectedCategory}: $
-              {categoryBudgets[selectedCategory]
-                ? typeof categoryBudgets[selectedCategory] === "object"
-                  ? (categoryBudgets[selectedCategory].amount ?? 0).toFixed(2)
-                  : Number(categoryBudgets[selectedCategory]).toFixed(2)
-                : "0.00"}
+          <View
+            style={[
+              styles.currentBudgetContainer,
+              { backgroundColor: theme.successBg },
+            ]}
+          >
+            <Text style={[styles.currentBudgetText, { color: theme.success }]}>
+              Current budget for {selectedCategory}:{" "}
+              {formatCurrency(
+                categoryBudgets[selectedCategory]
+                  ? typeof categoryBudgets[selectedCategory] === "object"
+                    ? categoryBudgets[selectedCategory].amount ?? 0
+                    : Number(categoryBudgets[selectedCategory])
+                  : 0
+              )}
             </Text>
           </View>
         )}
 
-        <TouchableOpacity
+        <Animated.View
           style={[
-            styles.saveButton,
+            styles.buttonContainer,
             {
-              backgroundColor: "#4CAF50",
+              opacity: buttonAnim,
+              transform: [
+                {
+                  translateY: buttonAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [20, 0],
+                  }),
+                },
+              ],
             },
           ]}
-          onPress={handleSave}
-          activeOpacity={0.8}
         >
-          <Text style={styles.saveButtonText}>💾 Save Budget</Text>
-        </TouchableOpacity>
-        {/* Remove Budget Button - only show if a budget is set for the selected category */}
-        {selectedCategory && categoryBudgets[selectedCategory] && (
           <TouchableOpacity
-            style={styles.removeButton}
-            onPress={handleRemoveBudget}
+            style={[styles.saveButton, { backgroundColor: theme.primary }]}
+            onPress={handleSave}
             activeOpacity={0.8}
           >
-            <Text style={styles.removeButtonText}>Remove Budget</Text>
+            <Text style={[styles.saveButtonText, { color: theme.textInverse }]}>
+              Save Budget
+            </Text>
           </TouchableOpacity>
-        )}
+
+          {selectedCategory && categoryBudgets[selectedCategory] && (
+            <TouchableOpacity
+              style={[styles.removeButton, { backgroundColor: theme.danger }]}
+              onPress={handleRemoveBudget}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[styles.removeButtonText, { color: theme.textInverse }]}
+              >
+                Remove Budget
+              </Text>
+            </TouchableOpacity>
+          )}
+        </Animated.View>
       </View>
     </Animated.View>
   );
@@ -345,143 +374,148 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: spacing.screen,
+    padding: spacing.screen,
+    paddingBottom: 80, // Space for bottom tabs
   },
   header: {
+    marginBottom: spacing.xl,
+  },
+  headerContent: {
     alignItems: "center",
-    paddingVertical: 40,
-    paddingTop: 20,
   },
-  welcomeText: {
-    fontSize: 16,
-    fontWeight: "400",
-    marginBottom: 8,
-  },
-  appName: {
-    fontSize: 36,
-    fontWeight: "800",
-    marginBottom: 8,
-  },
-  zennyAccent: {
-    color: "#4CAF50",
-  },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: "400",
+
+  title: {
+    fontSize: typography.h1,
+    fontWeight: typography.bold,
+    marginBottom: spacing.xs,
     textAlign: "center",
   },
+  subtitle: {
+    fontSize: typography.body,
+    fontWeight: typography.regular,
+    textAlign: "center",
+    lineHeight: 20,
+  },
   formContainer: {
-    marginBottom: 32,
+    marginBottom: spacing.lg,
   },
   formCard: {
     borderRadius: radius.large,
-    padding: 24,
-    backgroundColor: "transparent",
+    padding: spacing.xl,
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 20,
+    fontSize: typography.h3,
+    fontWeight: typography.semibold,
+    marginBottom: spacing.lg,
     textAlign: "center",
   },
   formGroup: {
-    marginBottom: 20,
-    zIndex: 10,
+    marginBottom: spacing.lg,
   },
   label: {
-    fontSize: 16,
-    marginBottom: 8,
-    fontWeight: "600",
-  },
-  dropdown: {
-    borderWidth: 1,
-    borderRadius: radius.medium,
-    minHeight: 50,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  input: {
-    borderWidth: 1,
-    padding: 16,
-    borderRadius: radius.medium,
-    fontSize: 16,
-    fontWeight: "600",
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  currentBudgetContainer: {
-    alignItems: "center",
-    marginBottom: 20,
-    paddingVertical: 12,
-    borderRadius: radius.medium,
-    backgroundColor: "rgba(76, 175, 80, 0.1)",
-  },
-  currentBudgetText: {
-    fontSize: 14,
-    fontStyle: "italic",
-    textAlign: "center",
-  },
-  saveButton: {
-    paddingVertical: 16,
-    borderRadius: radius.medium,
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  saveButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  bottomSpacing: {
-    height: 40,
+    fontSize: typography.body,
+    fontWeight: typography.semibold,
+    marginBottom: spacing.sm,
   },
   pickerContainer: {
     borderWidth: 1,
     borderRadius: radius.medium,
     overflow: "hidden",
+    height: 60, // Increased height
+    justifyContent: "center", // Center Picker vertically
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  input: {
+    borderWidth: 1,
+    padding: spacing.md,
+    borderRadius: radius.medium,
+    fontSize: typography.body,
+    fontWeight: typography.medium,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  currentBudgetContainer: {
+    alignItems: "center",
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.medium,
+  },
+  currentBudgetText: {
+    fontSize: typography.small,
+    fontWeight: typography.medium,
+    textAlign: "center",
+  },
+  buttonContainer: {
+    gap: spacing.md,
+  },
+  saveButton: {
+    paddingVertical: spacing.md,
+    borderRadius: radius.medium,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  saveButtonText: {
+    fontSize: typography.body,
+    fontWeight: typography.semibold,
   },
   removeButton: {
-    marginTop: 16,
-    backgroundColor: "#E74C3C",
-    paddingVertical: 14,
-    borderRadius: radius.large,
+    paddingVertical: spacing.md,
+    borderRadius: radius.medium,
     alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#E74C3C",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   removeButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
+    fontSize: typography.body,
+    fontWeight: typography.semibold,
+  },
+  bottomSpacing: {
+    height: spacing.xl,
   },
 });
 

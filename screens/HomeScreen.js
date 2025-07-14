@@ -1,4 +1,11 @@
-import React, { useContext, useRef, useEffect } from "react";
+import React, {
+  useContext,
+  useRef,
+  useEffect,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import {
   View,
   Text,
@@ -10,41 +17,58 @@ import {
   ScrollView,
 } from "react-native";
 import { ThemeContext } from "../context/ThemeContext";
-import { darkMode } from "../context/ThemeContext";
 import { spacing } from "../constants/spacing";
-import { radius } from "../constants/radius";
+import { radius, borderRadius } from "../constants/radius";
+import { typography } from "../constants/typography";
+import { elevation } from "../constants/shadows";
 import { lightTheme, darkTheme } from "../constants/themes";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ReceiptContext } from "../context/ReceiptContext";
 import { IncomeContext } from "../context/IncomeContext";
-import * as Notifications from "expo-notifications";
 import { BudgetContext } from "../context/BudgetContext";
 import { NotificationContext } from "../context/NotificationContext";
 import { useCurrency } from "../context/CurrencyContext";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
-const HomeScreen = ({ navigation }) => {
+const HomeScreen = forwardRef((props, ref) => {
   const { darkMode } = useContext(ThemeContext);
   const theme = darkMode ? darkTheme : lightTheme;
   const { formatCurrency, convertCurrency } = useCurrency();
 
   // Animation values
-  const NUM_ANIM_SECTIONS = 8; // 1 balance card + 6 menu cards + 1 quick actions
   const headerAnim = useRef(new Animated.Value(0)).current;
-  const cardAnims = useRef(
-    [...Array(6)].map(() => new Animated.Value(0))
-  ).current;
+  const kpiAnim = useRef(new Animated.Value(0)).current;
+  const chartAnim = useRef(new Animated.Value(0)).current;
+  const activityAnim = useRef(new Animated.Value(0)).current;
+
+  // Counter animations for numbers
+  const [animatedSpent, setAnimatedSpent] = useState(0);
+  const [animatedIncome, setAnimatedIncome] = useState(0);
+  const [animatedBalance, setAnimatedBalance] = useState(0);
+  const [animatedSavings, setAnimatedSavings] = useState(0);
 
   const { receipts } = useContext(ReceiptContext);
   const { incomeList } = useContext(IncomeContext);
-
+  const { categoryBudgets } = useContext(BudgetContext);
   const { notificationsEnabled } = useContext(NotificationContext);
+
+  const scrollViewRef = useRef();
+  useImperativeHandle(ref, () => ({
+    scrollToTop: () => {
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: true });
+      }
+    },
+  }));
 
   // Helper: get current month/year
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const currentDay = now.getDate();
+  const daysLeft = daysInMonth - currentDay;
 
   // Filter receipts and income for current month
   const monthReceipts = receipts.filter((r) => {
@@ -55,6 +79,46 @@ const HomeScreen = ({ navigation }) => {
     const d = new Date(i.date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
+
+  // Calculate totals
+  const totalSpent = monthReceipts.reduce(
+    (sum, r) => sum + Math.abs(r.amount),
+    0
+  );
+  const totalIncome = monthIncome.reduce(
+    (sum, i) => sum + Math.abs(i.amount),
+    0
+  );
+  const balance = totalIncome - totalSpent;
+  const savingsRate =
+    totalIncome > 0 ? Math.round((balance / totalIncome) * 100) : 0;
+
+  // Calculate budget progress
+  const totalBudget = Object.values(categoryBudgets).reduce((sum, budget) => {
+    // Handle both object format {amount: number} and direct number format
+    const amount =
+      typeof budget === "object" ? budget.amount || 0 : budget || 0;
+    return sum + amount;
+  }, 0);
+  const budgetUsed = totalSpent;
+  const budgetRemaining = totalBudget - budgetUsed;
+  const budgetProgress = totalBudget > 0 ? (budgetUsed / totalBudget) * 100 : 0;
+
+  // Get spending trend (compare to previous month)
+  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+  const prevMonthReceipts = receipts.filter((r) => {
+    const d = new Date(r.date);
+    return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+  });
+  const prevMonthSpent = prevMonthReceipts.reduce(
+    (sum, r) => sum + Math.abs(r.amount),
+    0
+  );
+  const spendingTrend =
+    prevMonthSpent > 0
+      ? ((totalSpent - prevMonthSpent) / prevMonthSpent) * 100
+      : 0;
 
   // Combine and sort for recent activity
   const recentActivity = [
@@ -76,39 +140,36 @@ const HomeScreen = ({ navigation }) => {
     })),
   ]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 3);
+    .slice(0, 5);
 
-  // Helper: assign a unique color to each category
+  // Helper: assign a unique color to each category using Zenny theme
   const categoryColorMap = {};
-  const palette = [
-    "#4CAF50",
-    "#FF6B6B",
-    "#4ECDC4",
-    "#45B7D1",
-    "#F39C12",
-    "#8E44AD",
-    "#E74C3C",
-    "#2196F3",
-    "#F59E0B",
-    "#10B981",
+  const categoryPalette = [
+    theme.primary,
+    theme.secondary,
+    theme.accent,
+    theme.success,
+    theme.warning,
+    theme.danger,
   ];
+
   function getCategoryColor(category, idx = 0) {
     if (!categoryColorMap[category]) {
-      categoryColorMap[category] = palette[idx % palette.length];
+      categoryColorMap[category] =
+        categoryPalette[idx % categoryPalette.length];
     }
     return categoryColorMap[category];
   }
 
-  // Aggregate top spending by category (current month, top 3)
+  // Aggregate top spending by category
   const categorySpent = {};
   monthReceipts.forEach((r) => {
     if (!categorySpent[r.category]) categorySpent[r.category] = 0;
     categorySpent[r.category] += Math.abs(r.amount);
   });
-  const totalSpent = Object.values(categorySpent).reduce((a, b) => a + b, 0);
   const topSpending = Object.entries(categorySpent)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
+    .slice(0, 4)
     .map(([category, amount], idx) => ({
       category,
       amount,
@@ -116,82 +177,74 @@ const HomeScreen = ({ navigation }) => {
       color: getCategoryColor(category, idx),
     }));
 
-  // Calculate totals
-  const totalIncome = monthIncome.reduce(
-    (sum, i) => sum + Math.abs(i.amount),
-    0
-  );
+  // Animated counter effect
+  useEffect(() => {
+    const duration = 2000;
+    const steps = 60;
+    const stepDuration = duration / steps;
 
-  // Format as currency using the currency context
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      currentStep++;
+      const progress = currentStep / steps;
+
+      setAnimatedSpent(Math.round(totalSpent * progress));
+      setAnimatedIncome(Math.round(totalIncome * progress));
+      setAnimatedBalance(Math.round(balance * progress));
+      setAnimatedSavings(Math.round(savingsRate * progress));
+
+      if (currentStep >= steps) {
+        clearInterval(interval);
+        setAnimatedSpent(totalSpent);
+        setAnimatedIncome(totalIncome);
+        setAnimatedBalance(balance);
+        setAnimatedSavings(savingsRate);
+      }
+    }, stepDuration);
+
+    return () => clearInterval(interval);
+  }, [totalSpent, totalIncome, balance, savingsRate]);
 
   useEffect(() => {
-    // Animate header
-    Animated.timing(headerAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-
-    // Animate cards with stagger
-    const cardAnimations = cardAnims.map((anim, index) =>
-      Animated.timing(anim, {
+    // Staggered entrance animations
+    Animated.stagger(150, [
+      Animated.timing(headerAnim, {
         toValue: 1,
-        duration: 500,
-        delay: index * 200,
+        duration: 800,
         useNativeDriver: true,
-      })
-    );
-
-    Animated.stagger(200, cardAnimations).start();
+      }),
+      Animated.timing(kpiAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(chartAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(activityAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
-  // Removed the blanket threshold check - notifications are now handled in AddReceiptScreen.js
-  // for the specific category being added, not all categories
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  };
 
-  const menuItems = [
-    {
-      label: "Receipts",
-      screen: "Saved Receipts",
-      icon: "📄",
-      description: "View your saved receipts",
-      color: "#6366f1",
-    },
-    {
-      label: "Add Receipt",
-      screen: "Add Receipt",
-      icon: "➕",
-      description: "Scan and save new receipts",
-      color: "#10b981",
-    },
-    {
-      label: "My Budget",
-      screen: "My Budget",
-      icon: "💰",
-      description: "Track your spending limits",
-      color: "#f59e0b",
-    },
-    {
-      label: "Statistics",
-      screen: "Statistics",
-      description: "View spending analytics",
-      icon: "📊",
-      color: "#ef4444",
-    },
-    {
-      label: "Income",
-      screen: "Income",
-      icon: "💼",
-      description: "Manage your income sources",
-      color: "#8b5cf6",
-    },
-    {
-      label: "Savings",
-      screen: "SavingsGoal",
-      icon: "🎯",
-      description: "Set and track savings goals",
-      color: "#06b6d4",
-    },
-  ];
+  const getDateString = () => {
+    return now.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   const renderHeader = () => (
     <Animated.View
@@ -201,92 +254,391 @@ const HomeScreen = ({ navigation }) => {
           opacity: headerAnim,
           transform: [
             {
-              translateY: 0,
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [30, 0],
+              }),
             },
           ],
         },
       ]}
     >
-      <View style={styles.headerTop}>
-        <Text style={[styles.appName, { color: theme.text }]}>Zenny</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
-          <Text style={{ fontSize: 20 }}>⚙️</Text>
+      <View style={styles.headerContent}>
+        <View>
+          <Text style={[styles.greeting, { color: theme.text }]}>
+            {getGreeting()}
+          </Text>
+          <Text style={[styles.dateText, { color: theme.subtleText }]}>
+            {getDateString()}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[
+            styles.settingsButton,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+          onPress={() => props.navigation.navigate("Settings")}
+        >
+          <Text style={styles.settingsIcon}>⚙️</Text>
         </TouchableOpacity>
       </View>
-      <Text
-        style={[
-          styles.headerSubtitle,
-          { color: darkMode ? "#fff" : theme.textSecondary },
-        ]}
-      >
-        Your personal finance dashboard
-      </Text>
     </Animated.View>
   );
 
-  const renderBalanceCard = () => (
+  const renderMainKPI = () => (
     <Animated.View
       style={[
-        styles.balanceCard,
+        styles.mainKPISection,
         {
-          backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-          opacity: cardAnims[0],
+          opacity: kpiAnim,
           transform: [
             {
-              scale: 1,
+              translateY: kpiAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [50, 0],
+              }),
             },
           ],
         },
       ]}
     >
-      <View style={styles.balanceStats}>
-        <View style={styles.statItem}>
-          <Text
+      <View
+        style={[
+          styles.mainKPICard,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <View style={styles.mainKPIHeader}>
+          <Text style={[styles.mainKPILabel, { color: theme.subtleText }]}>
+            Monthly Balance
+          </Text>
+          <View
             style={[
-              styles.statLabel,
-              { color: darkMode ? "#fff" : theme.textSecondary },
+              styles.mainKPIIndicator,
+              {
+                backgroundColor: balance >= 0 ? theme.success : theme.danger,
+              },
             ]}
-          >
-            This Month
-          </Text>
-          <Text style={[styles.statValue, { color: theme.text }]}>
-            {formatCurrency(convertCurrency(totalSpent))}
-          </Text>
+          />
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text
-            style={[
-              styles.statLabel,
-              { color: darkMode ? "#fff" : theme.textSecondary },
-            ]}
-          >
+        <Text
+          style={[
+            styles.mainKPIValue,
+            {
+              color: balance >= 0 ? theme.success : theme.danger,
+            },
+          ]}
+        >
+          {formatCurrency(convertCurrency(animatedBalance))}
+        </Text>
+        <View style={styles.mainKPIMeta}>
+          <Text style={[styles.mainKPIPeriod, { color: theme.subtleText }]}>
+            {daysLeft} days left this month
+          </Text>
+          <View style={styles.trendContainer}>
+            <Text
+              style={[
+                styles.trendText,
+                {
+                  color: spendingTrend <= 0 ? theme.success : theme.danger,
+                },
+              ]}
+            >
+              {spendingTrend <= 0 ? "↓" : "↑"}{" "}
+              {Math.abs(Math.round(spendingTrend))}%
+            </Text>
+            <Text style={[styles.trendLabel, { color: theme.subtleText }]}>
+              vs last month
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+
+  const renderQuickStats = () => (
+    <Animated.View
+      style={[
+        styles.quickStatsSection,
+        {
+          opacity: kpiAnim,
+          transform: [
+            {
+              translateY: kpiAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [30, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.quickStatsGrid}>
+        <View
+          style={[
+            styles.quickStatCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.quickStatLabel, { color: theme.subtleText }]}>
             Income
           </Text>
-          <Text style={[styles.statValue, { color: theme.text }]}>
-            {formatCurrency(convertCurrency(totalIncome))}
+          <Text
+            style={[styles.quickStatValue, { color: theme.success }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit={true}
+            minimumFontScale={0.8}
+          >
+            {formatCurrency(convertCurrency(animatedIncome))}
+          </Text>
+        </View>
+
+        <View
+          style={[
+            styles.quickStatCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.quickStatLabel, { color: theme.subtleText }]}>
+            Spent
+          </Text>
+          <Text
+            style={[styles.quickStatValue, { color: theme.danger }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit={true}
+            minimumFontScale={0.8}
+          >
+            {formatCurrency(convertCurrency(animatedSpent))}
+          </Text>
+        </View>
+
+        <View
+          style={[
+            styles.quickStatCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.quickStatLabel, { color: theme.subtleText }]}>
+            Savings Rate
+          </Text>
+          <Text
+            style={[styles.quickStatValue, { color: theme.primary }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit={true}
+            minimumFontScale={0.8}
+          >
+            {animatedSavings}%
           </Text>
         </View>
       </View>
-      <View style={styles.quickActions}>
+    </Animated.View>
+  );
+
+  const renderBudgetProgress = () => (
+    <Animated.View
+      style={[
+        styles.budgetSection,
+        {
+          opacity: chartAnim,
+          transform: [
+            {
+              translateY: chartAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [30, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.budgetCard,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <View style={styles.budgetHeader}>
+          <Text style={[styles.budgetTitle, { color: theme.text }]}>
+            Budget Progress
+          </Text>
+          {totalBudget > 0 ? (
+            <Text style={[styles.budgetAmount, { color: theme.primary }]}>
+              {formatCurrency(convertCurrency(budgetRemaining))} remaining
+            </Text>
+          ) : (
+            <Text style={[styles.budgetAmount, { color: theme.primary }]}>
+              No budgets set
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.progressContainer}>
+          <View
+            style={[styles.progressTrack, { backgroundColor: theme.border }]}
+          >
+            <Animated.View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${Math.min(budgetProgress, 100)}%`,
+                  backgroundColor:
+                    budgetProgress > 80
+                      ? theme.danger
+                      : budgetProgress > 60
+                      ? theme.warning
+                      : theme.success,
+                },
+              ]}
+            />
+          </View>
+        </View>
+
+        {totalBudget > 0 ? (
+          <View style={styles.budgetMeta}>
+            <Text style={[styles.budgetUsed, { color: theme.subtleText }]}>
+              {formatCurrency(convertCurrency(budgetUsed))} of{" "}
+              {formatCurrency(convertCurrency(totalBudget))}
+            </Text>
+            <Text style={[styles.budgetPercentage, { color: theme.text }]}>
+              {Math.round(budgetProgress)}%
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.budgetMeta}>
+            <Text style={[styles.budgetUsed, { color: theme.subtleText }]}>
+              {formatCurrency(convertCurrency(budgetUsed))} spent this month
+            </Text>
+            <TouchableOpacity
+              onPress={() => props.navigation.navigate("Budget")}
+            >
+              <Text style={[styles.budgetPercentage, { color: theme.primary }]}>
+                Set Budget
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </Animated.View>
+  );
+
+  const renderSpendingBreakdown = () => (
+    <Animated.View
+      style={[
+        styles.chartSection,
+        {
+          opacity: chartAnim,
+          transform: [
+            {
+              translateY: chartAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [30, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Top Spending
+        </Text>
         <TouchableOpacity
-          style={[styles.quickAction, { backgroundColor: "#4CAF50" }]}
-          onPress={() => navigation.navigate("Add Receipt")}
+          onPress={() => props.navigation.navigate("Analytics")}
         >
-          <Text style={styles.quickActionIcon}>📷</Text>
-          <Text style={[styles.quickActionText, { color: theme.text }]}>
-            Add Receipt
+          <Text style={[styles.viewAllText, { color: theme.primary }]}>
+            View All
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.quickAction, { backgroundColor: "#2196F3" }]}
-          onPress={() => navigation.navigate("Income")}
-        >
-          <Text style={styles.quickActionIcon}>💰</Text>
-          <Text style={[styles.quickActionText, { color: theme.text }]}>
-            Add Income
-          </Text>
-        </TouchableOpacity>
+      </View>
+
+      <View
+        style={[
+          styles.chartCard,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        {topSpending.length > 0 ? (
+          topSpending.map((item, index) => (
+            <View key={index} style={styles.chartItem}>
+              <View style={styles.chartLeft}>
+                <View
+                  style={[styles.chartDot, { backgroundColor: item.color }]}
+                />
+                <View style={styles.chartInfo}>
+                  <Text style={[styles.chartName, { color: theme.text }]}>
+                    {item.category}
+                  </Text>
+                  <Text
+                    style={[styles.chartAmount, { color: theme.subtleText }]}
+                  >
+                    {formatCurrency(convertCurrency(item.amount))}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.chartRight}>
+                <View style={styles.progressContainer}>
+                  <View
+                    style={[
+                      styles.progressTrack,
+                      { backgroundColor: theme.border },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${item.percent}%`,
+                          backgroundColor: item.color,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+                <Text style={[styles.chartPercentage, { color: theme.text }]}>
+                  {item.percent}%
+                </Text>
+              </View>
+            </View>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <View
+              style={[
+                styles.emptyIconContainer,
+                { backgroundColor: theme.border },
+              ]}
+            >
+              <Text style={styles.emptyIcon}>📊</Text>
+            </View>
+            <Text style={[styles.emptyText, { color: theme.text }]}>
+              No spending data yet
+            </Text>
+            <Text style={[styles.emptySubtext, { color: theme.subtleText }]}>
+              Add your first receipt to see spending breakdown
+            </Text>
+          </View>
+        )}
       </View>
     </Animated.View>
   );
@@ -294,374 +646,115 @@ const HomeScreen = ({ navigation }) => {
   const renderRecentActivity = () => (
     <Animated.View
       style={[
-        styles.activityCard,
+        styles.activitySection,
         {
-          backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-          opacity: cardAnims[1],
+          opacity: activityAnim,
           transform: [
             {
-              translateY: 0,
+              translateY: activityAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [30, 0],
+              }),
             },
           ],
         },
       ]}
     >
-      <View style={styles.cardHeader}>
-        <Text style={[styles.cardTitle, { color: theme.text }]}>
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
           Recent Activity
         </Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Saved Receipts")}>
-          <Text style={[styles.viewAllText, { color: "#4CAF50" }]}>
+        <TouchableOpacity onPress={() => props.navigation.navigate("Receipts")}>
+          <Text style={[styles.viewAllText, { color: theme.primary }]}>
             View All
           </Text>
         </TouchableOpacity>
       </View>
-      {recentActivity.length === 0 ? (
-        <Text
-          style={{
-            color: theme.textSecondary,
-            textAlign: "center",
-            marginVertical: 16,
-          }}
-        >
-          No activity yet this month.
-        </Text>
-      ) : (
-        recentActivity.map((transaction, index) => (
-          <View key={transaction.id} style={styles.transactionItem}>
-            <View style={styles.transactionLeft}>
+
+      <View
+        style={[
+          styles.activityCard,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        {recentActivity.length > 0 ? (
+          recentActivity.map((item, index) => (
+            <View
+              key={item.id}
+              style={[
+                styles.activityItem,
+                { borderBottomColor: theme.border },
+                index === recentActivity.length - 1 && styles.lastActivityItem,
+              ]}
+            >
               <View
                 style={[
-                  styles.categoryIcon,
+                  styles.activityIcon,
                   {
                     backgroundColor:
-                      transaction.amount > 0 ? "#4CAF50" : "#FF6B6B",
+                      item.type === "income" ? theme.successBg : theme.dangerBg,
                   },
                 ]}
               >
-                <Text style={styles.categoryIconText}>
-                  {transaction.amount > 0 ? "💰" : "💳"}
-                </Text>
-              </View>
-              <View style={styles.transactionInfo}>
-                <Text
-                  style={styles.transactionName}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {transaction.name}
-                </Text>
-                <Text
-                  style={styles.transactionCategory}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {transaction.category} •{" "}
-                  {new Date(transaction.date).toLocaleDateString()}
-                </Text>
-              </View>
-            </View>
-            <Text
-              style={styles.transactionAmount}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {transaction.amount > 0 ? "+" : ""}
-              {formatCurrency(convertCurrency(Math.abs(transaction.amount)))}
-            </Text>
-          </View>
-        ))
-      )}
-    </Animated.View>
-  );
-
-  const renderSpendingInsights = () => (
-    <View
-      style={{
-        backgroundColor: theme.cardBackground,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 24,
-      }}
-    >
-      <View style={styles.cardHeader}>
-        <Text style={[styles.cardTitle, { color: theme.text }]}>
-          Top Spending
-        </Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Statistics")}>
-          <Text style={[styles.viewAllText, { color: "#4CAF50" }]}>
-            Details
-          </Text>
-        </TouchableOpacity>
-      </View>
-      {topSpending.length === 0 ? (
-        <Text
-          style={{
-            color: theme.textSecondary,
-            textAlign: "center",
-            marginVertical: 16,
-          }}
-        >
-          No spending yet this month.
-        </Text>
-      ) : (
-        topSpending.map((cat, index) => (
-          <View key={cat.category} style={styles.categoryItem}>
-            <View style={styles.categoryLeft}>
-              <View
-                style={[styles.categoryDot, { backgroundColor: cat.color }]}
-              />
-              <View style={styles.categoryInfo}>
                 <Text
                   style={[
-                    styles.categoryName,
-                    darkMode ? { color: "#fff" } : {},
+                    styles.activityIconText,
+                    {
+                      color:
+                        item.type === "income" ? theme.success : theme.danger,
+                    },
                   ]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
                 >
-                  {cat.category}
-                </Text>
-                <Text
-                  style={[
-                    styles.categoryAmount,
-                    darkMode ? { color: "#fff" } : {},
-                  ]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {formatCurrency(convertCurrency(cat.amount))}
+                  {item.type === "income" ? "💰" : "🛒"}
                 </Text>
               </View>
-            </View>
-            <Text
-              style={[styles.categoryPercentage, { color: theme.text }]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {cat.percent}%
-            </Text>
-          </View>
-        ))
-      )}
-    </View>
-  );
-
-  const renderMenuGrid = () => (
-    <View style={styles.menuSection}>
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        Manage Your Finances
-      </Text>
-      <View style={styles.menuGrid}>
-        {menuItems.map((item, index) => (
-          <Animated.View
-            key={item.screen}
-            style={[
-              styles.menuItem,
-              {
-                opacity: cardAnims[index + 1],
-                transform: [
+              <View style={styles.activityContent}>
+                <Text style={[styles.activityName, { color: theme.text }]}>
+                  {item.name}
+                </Text>
+                <Text
+                  style={[styles.activityMeta, { color: theme.subtleText }]}
+                >
+                  {item.category} • {new Date(item.date).toLocaleDateString()}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.activityAmount,
                   {
-                    translateY: 0,
+                    color:
+                      item.type === "income" ? theme.success : theme.danger,
                   },
-                ],
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={[
-                styles.menuCard,
-                {
-                  backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-                  shadowColor: theme.text,
-                },
-              ]}
-              onPress={() => navigation.navigate(item.screen)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: item.color }]}>
-                <Text style={styles.iconText}>{item.icon}</Text>
-              </View>
-              <Text
-                style={[styles.menuLabel, { color: theme.text }]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
+                ]}
               >
-                {item.label}
-              </Text>
-              <Text
-                style={[styles.menuDescription, { color: theme.textSecondary }]}
-                numberOfLines={2}
-                ellipsizeMode="tail"
-              >
-                {item.description}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        ))}
-      </View>
-    </View>
-  );
-
-  const renderQuickActions = () => (
-    <Animated.View
-      style={[
-        styles.quickActionsSection,
-        {
-          opacity: cardAnims[7],
-          transform: [
-            {
-              translateY: 0,
-            },
-          ],
-        },
-      ]}
-    >
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        Quick Actions
-      </Text>
-      <View style={styles.quickActionsRow}>
-        <TouchableOpacity
-          style={[
-            styles.quickActionButton,
-            {
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              shadowColor: theme.text,
-            },
-          ]}
-          onPress={() => navigation.navigate("Add Receipt")}
-        >
-          <Text style={styles.quickActionIcon}>📷</Text>
-          <Text style={[styles.quickActionText, { color: theme.text }]}>
-            Scan Receipt
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.quickActionButton,
-            {
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              shadowColor: theme.text,
-            },
-          ]}
-          onPress={() => navigation.navigate("My Budget")}
-        >
-          <Text style={styles.quickActionIcon}>📊</Text>
-          <Text style={[styles.quickActionText, { color: theme.text }]}>
-            View Budget
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.quickActionButton,
-            {
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              shadowColor: theme.text,
-            },
-          ]}
-          onPress={() => navigation.navigate("Settings")}
-        >
-          <Text style={styles.quickActionIcon}>📤</Text>
-          <Text style={[styles.quickActionText, { color: theme.text }]}>
-            Export Data
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </Animated.View>
-  );
-
-  const renderMinimalRecentActivity = () => (
-    <View
-      style={{
-        backgroundColor: theme.cardBackground,
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 24,
-        // Remove shadow for a flat look
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 12,
-        }}
-      >
-        <Text style={{ fontWeight: "bold", fontSize: 18, color: theme.text }}>
-          Recent Activity
-        </Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Saved Receipts")}>
-          <Text style={{ color: "#4CAF50", fontWeight: "600", fontSize: 14 }}>
-            View All
-          </Text>
-        </TouchableOpacity>
-      </View>
-      {recentActivity.length === 0 ? (
-        <Text
-          style={{
-            color: theme.textSecondary,
-            textAlign: "center",
-            marginVertical: 16,
-          }}
-        >
-          No activity yet this month.
-        </Text>
-      ) : (
-        recentActivity.map((item) => (
-          <View
-            key={item.id}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingVertical: 10,
-              borderBottomWidth: 1,
-              borderBottomColor: darkMode ? "#000" : theme.border || "#eee",
-            }}
-          >
-            <View style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-              <Text
-                style={{
-                  fontWeight: "600",
-                  fontSize: 16,
-                  color: darkMode ? "#fff" : theme.text,
-                }}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {item.name}
-              </Text>
-              <Text
-                style={{
-                  color: darkMode ? "#fff" : theme.textSecondary,
-                  fontSize: 12,
-                }}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {item.category} • {new Date(item.date).toLocaleDateString()}
+                {item.type === "income" ? "+" : "-"}
+                {formatCurrency(convertCurrency(Math.abs(item.amount)))}
               </Text>
             </View>
-            <Text
-              style={{
-                width: 70,
-                textAlign: "right",
-                fontWeight: "bold",
-                fontSize: 16,
-                flexShrink: 0,
-                color: item.amount > 0 ? "#2ecc71" : "#e74c3c",
-              }}
-              numberOfLines={1}
-              ellipsizeMode="tail"
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <View
+              style={[
+                styles.emptyIconContainer,
+                { backgroundColor: theme.border },
+              ]}
             >
-              {item.amount > 0 ? "+" : ""}
-              {formatCurrency(convertCurrency(Math.abs(item.amount)))}
+              <Text style={styles.emptyIcon}>📝</Text>
+            </View>
+            <Text style={[styles.emptyText, { color: theme.text }]}>
+              No recent activity
+            </Text>
+            <Text style={[styles.emptySubtext, { color: theme.subtleText }]}>
+              Add receipts or income to see your activity
             </Text>
           </View>
-        ))
-      )}
-    </View>
+        )}
+      </View>
+    </Animated.View>
   );
 
   return (
@@ -669,24 +762,22 @@ const HomeScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { alignItems: "stretch" },
-        ]}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
         {renderHeader()}
-        {renderBalanceCard()}
-        {renderMinimalRecentActivity()}
-        {renderSpendingInsights()}
-        {renderMenuGrid()}
-        {renderQuickActions()}
+        {renderMainKPI()}
+        {renderQuickStats()}
+        {renderBudgetProgress()}
+        {renderSpendingBreakdown()}
+        {renderRecentActivity()}
         <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -696,72 +787,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: spacing.screen,
+    padding: spacing.screen,
+    paddingBottom: 80, // Space for bottom tabs
   },
   header: {
-    paddingVertical: 24,
-    marginBottom: 16,
+    marginBottom: spacing.xl,
   },
-  headerTop: {
+  headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  greeting: {
+    fontSize: typography.xxxl,
+    fontWeight: typography.bold,
+    marginBottom: spacing.xs,
+  },
+  dateText: {
+    fontSize: typography.base,
+    fontWeight: typography.normal,
+  },
+  settingsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
-    marginBottom: 8,
-  },
-  appName: {
-    fontSize: 28,
-    fontWeight: "800",
-  },
-  headerBadge: {
-    backgroundColor: "#4CAF50",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    fontWeight: "400",
-  },
-  balanceCard: {
-    padding: 20,
-    borderRadius: radius.large,
-    marginBottom: 24,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  balanceStats: { flexDirection: "row", marginBottom: 20 },
-  statItem: { flex: 1 },
-  statLabel: { fontSize: 12, fontWeight: "500", marginBottom: 4 },
-  statValue: { fontSize: 16, fontWeight: "700" },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: "#E5E7EB",
-    marginHorizontal: 20,
-  },
-  quickActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  quickAction: {
-    flex: 1,
-    padding: 16,
-    borderRadius: radius.medium,
-    alignItems: "center",
-    marginHorizontal: 4,
+    justifyContent: "center",
+    borderWidth: 1,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 2 },
@@ -773,42 +825,20 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  quickActionIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  quickActionText: {
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  menuSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
+  settingsIcon: {
     fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 16,
   },
-  menuGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+  mainKPISection: {
+    marginBottom: spacing.xl,
   },
-  menuItem: {
-    width: "48%",
-    marginBottom: 16,
-  },
-  menuCard: {
-    padding: 16,
-    borderRadius: radius.medium,
-    alignItems: "center",
-    height: 140, // fixed height for uniformity
-    justifyContent: "center",
+  mainKPICard: {
+    borderRadius: borderRadius.card,
+    padding: spacing.xl,
+    borderWidth: 1,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.08,
         shadowRadius: 8,
       },
       android: {
@@ -816,46 +846,63 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  menuIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  iconText: {
-    fontSize: 24,
-  },
-  menuLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  menuDescription: {
-    fontSize: 12,
-    fontWeight: "400",
-    textAlign: "center",
-    lineHeight: 16,
-  },
-  quickActionsSection: {
-    marginBottom: 24,
-  },
-  quickActionsRow: {
+  mainKPIHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-  quickActionButton: {
-    flex: 1,
-    padding: 16,
-    borderRadius: radius.medium,
     alignItems: "center",
-    marginHorizontal: 4,
+    marginBottom: spacing.sm,
+  },
+  mainKPILabel: {
+    fontSize: typography.base,
+    fontWeight: typography.semibold,
+  },
+  mainKPIIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  mainKPIValue: {
+    fontSize: 32,
+    fontWeight: typography.bold,
+    marginBottom: spacing.md,
+  },
+  mainKPIMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  mainKPIPeriod: {
+    fontSize: typography.sm,
+    fontWeight: typography.normal,
+  },
+  trendContainer: {
+    alignItems: "flex-end",
+  },
+  trendText: {
+    fontSize: typography.sm,
+    fontWeight: typography.bold,
+  },
+  trendLabel: {
+    fontSize: typography.xs,
+    fontWeight: typography.normal,
+  },
+  quickStatsSection: {
+    marginBottom: spacing.xl,
+  },
+  quickStatsGrid: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  quickStatCard: {
+    flex: 1,
+    borderRadius: borderRadius.card,
+    padding: spacing.lg,
+    borderWidth: 1,
+    alignItems: "center",
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.06,
         shadowRadius: 4,
       },
       android: {
@@ -863,150 +910,228 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  quickActionIcon: {
-    fontSize: 24,
-    marginBottom: 8,
+  quickStatLabel: {
+    fontSize: typography.sm,
+    fontWeight: typography.normal,
+    marginBottom: spacing.xs,
   },
-  quickActionText: {
-    fontSize: 14,
-    fontWeight: "600",
+  quickStatValue: {
+    fontSize: typography.lg,
+    fontWeight: typography.bold,
     textAlign: "center",
+    flexShrink: 1,
+    numberOfLines: 1,
   },
-  bottomSpacing: {
-    height: 40,
+  budgetSection: {
+    marginBottom: spacing.xl,
   },
-  activityCard: {
-    padding: 20,
-    borderRadius: radius.large,
-    marginBottom: 24,
+  budgetCard: {
+    borderRadius: borderRadius.card,
+    padding: spacing.lg,
+    borderWidth: 1,
     ...Platform.select({
       ios: {
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 8,
+        elevation: 4,
       },
     }),
   },
-  cardHeader: {
+  budgetHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+  budgetTitle: {
+    fontSize: typography.lg,
+    fontWeight: typography.bold,
+  },
+  budgetAmount: {
+    fontSize: typography.sm,
+    fontWeight: typography.semibold,
+  },
+  progressContainer: {
+    flex: 1,
+    maxWidth: 100,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  budgetMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: spacing.sm,
+  },
+  budgetUsed: {
+    fontSize: typography.sm,
+    fontWeight: typography.normal,
+  },
+  budgetPercentage: {
+    fontSize: typography.sm,
+    fontWeight: typography.bold,
+  },
+  chartSection: {
+    marginBottom: spacing.xl,
+  },
+  activitySection: {
+    marginBottom: spacing.xl,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: typography.xl,
+    fontWeight: typography.bold,
   },
   viewAllText: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: typography.sm,
+    fontWeight: typography.semibold,
   },
-  transactionItem: {
-    flexDirection: "row",
+  emptyState: {
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    paddingVertical: spacing.xxl,
   },
-  transactionLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  categoryIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginBottom: spacing.md,
   },
-  categoryIconText: {
-    fontSize: 20,
+  emptyIcon: {
+    fontSize: 24,
   },
-  transactionInfo: {
-    flex: 1,
-    minWidth: 0,
-    overflow: "hidden",
+  emptyText: {
+    fontSize: typography.base,
+    fontWeight: typography.semibold,
+    marginBottom: spacing.xs,
   },
-  transactionName: {
-    fontSize: 16,
-    fontWeight: "600",
+  emptySubtext: {
+    fontSize: typography.sm,
+    fontWeight: typography.normal,
+    textAlign: "center",
   },
-  transactionCategory: {
-    fontSize: 12,
-    fontWeight: "400",
-    color: "#888",
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: "700",
-    width: 70,
-    textAlign: "right",
-    flexShrink: 0,
-  },
-  insightsCard: {
-    padding: 20,
-    borderRadius: radius.large,
-    marginBottom: 24,
+  chartCard: {
+    borderRadius: borderRadius.card,
+    padding: spacing.lg,
+    borderWidth: 1,
     ...Platform.select({
       ios: {
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 8,
+        elevation: 4,
       },
     }),
   },
-  categoryItem: {
+  chartItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: darkMode ? "#000" : "#E5E7EB",
-    paddingHorizontal: 16, // Add horizontal padding
+    marginBottom: spacing.md,
   },
-  categoryLeft: {
+  chartLeft: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    minWidth: 0,
-    paddingRight: 16, // Reserve space for percentage
   },
-  categoryPercentage: {
-    fontSize: 14,
-    fontWeight: "400",
-    width: 50,
+  chartDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: spacing.md,
+  },
+  chartInfo: {
+    flex: 1,
+  },
+  chartName: {
+    fontSize: typography.base,
+    fontWeight: typography.semibold,
+    marginBottom: spacing.xs,
+  },
+  chartAmount: {
+    fontSize: typography.sm,
+    fontWeight: typography.normal,
+  },
+  chartRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  chartPercentage: {
+    fontSize: typography.sm,
+    fontWeight: typography.bold,
+    minWidth: 40,
     textAlign: "right",
-    flexShrink: 0,
-    position: "absolute", // Try absolute positioning
-    right: 0,
   },
-  categoryInfo: {
+  activityCard: {
+    borderRadius: borderRadius.card,
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  activityItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+  },
+  lastActivityItem: {
+    borderBottomWidth: 0,
+  },
+  activityIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.md,
+  },
+  activityIconText: {
+    fontSize: 18,
+  },
+  activityContent: {
     flex: 1,
-    minWidth: 0,
-    overflow: "hidden",
-    marginRight: 8, // Add some margin
   },
-  categoryDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 10,
+  activityName: {
+    fontSize: typography.base,
+    fontWeight: typography.semibold,
+    marginBottom: spacing.xs,
   },
-  categoryName: {
-    fontSize: 16,
-    fontWeight: "600",
+  activityMeta: {
+    fontSize: typography.sm,
+    fontWeight: typography.normal,
   },
-  categoryAmount: {
-    fontSize: 14,
-    fontWeight: "400",
-    color: "#888",
+  activityAmount: {
+    fontSize: typography.base,
+    fontWeight: typography.bold,
+  },
+  bottomSpacing: {
+    height: spacing.xxl,
   },
 });
 

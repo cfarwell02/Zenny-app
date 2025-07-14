@@ -11,9 +11,9 @@ import {
   Animated,
   ScrollView,
   Modal,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { lightTheme, darkTheme } from "../constants/themes";
 import { ThemeContext } from "../context/ThemeContext";
 import { ReceiptContext } from "../context/ReceiptContext";
 import {
@@ -25,12 +25,70 @@ import { radius } from "../constants/radius";
 import { spacing } from "../constants/spacing";
 import { useCurrency } from "../context/CurrencyContext";
 
+const { width: screenWidth } = Dimensions.get("window");
+
+// Zenny Brand Color Theme - Consistent throughout the app
+const ZENNY_THEME = {
+  // Primary Brand Colors
+  primary: "#6366F1", // Indigo 500 - Main brand color
+  primaryLight: "#818CF8", // Indigo 400
+  primaryDark: "#4F46E5", // Indigo 600
+  primaryBg: "#EEF2FF", // Indigo 50
+
+  // Secondary Brand Colors
+  secondary: "#8B5CF6", // Purple 500
+  secondaryLight: "#A78BFA", // Purple 400
+  secondaryDark: "#7C3AED", // Purple 600
+  secondaryBg: "#F3F4F6", // Gray 100
+
+  // Accent Colors
+  accent: "#06B6D4", // Cyan 500
+  accentLight: "#22D3EE", // Cyan 400
+  accentDark: "#0891B2", // Cyan 600
+
+  // Semantic Colors
+  success: "#10B981", // Emerald 500
+  successLight: "#34D399", // Emerald 400
+  successDark: "#059669", // Emerald 600
+  successBg: "#ECFDF5", // Emerald 50
+
+  warning: "#F59E0B", // Amber 500
+  warningLight: "#FBBF24", // Amber 400
+  warningDark: "#D97706", // Amber 600
+  warningBg: "#FFFBEB", // Amber 50
+
+  danger: "#EF4444", // Red 500
+  dangerLight: "#F87171", // Red 400
+  dangerDark: "#DC2626", // Red 600
+  dangerBg: "#FEF2F2", // Red 50
+
+  // Neutral Colors
+  background: "#FAFAFA", // Gray 50
+  surface: "#FFFFFF",
+  surfaceSecondary: "#F9FAFB", // Gray 50
+
+  // Text Colors
+  text: "#111827", // Gray 900
+  textSecondary: "#6B7280", // Gray 500
+  textMuted: "#9CA3AF", // Gray 400
+  textInverse: "#FFFFFF",
+
+  // Border Colors
+  border: "#E5E7EB", // Gray 200
+  borderLight: "#F3F4F6", // Gray 100
+
+  // Shadow
+  shadow: "rgba(99, 102, 241, 0.08)", // Primary color with opacity
+  shadowLight: "rgba(0, 0, 0, 0.04)",
+};
+
 const defaultCategories = []; // Empty array to allow deletion of all categories
 
 const ManageCategoriesScreen = () => {
   const [newCategory, setNewCategory] = useState("");
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [activeTab, setActiveTab] = useState("custom"); // "custom" or "browse"
 
   const { darkMode } = useContext(ThemeContext);
   const { receipts } = useContext(ReceiptContext);
@@ -39,7 +97,6 @@ const ManageCategoriesScreen = () => {
   const { cleanupDeletedCategoryBudgets } = useContext(BudgetContext);
   const { categoryBudgets, setCategoryBudgets, updateCategoryBudget } =
     useContext(BudgetContext);
-  const theme = darkMode ? darkTheme : lightTheme;
   const { formatCurrency } = useCurrency();
 
   // Animation values
@@ -47,6 +104,7 @@ const ManageCategoriesScreen = () => {
   const slideAnim = useRef(new Animated.Value(50)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
   const modalAnim = useRef(new Animated.Value(0)).current;
+  const tabAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Animate header
@@ -116,18 +174,6 @@ const ManageCategoriesScreen = () => {
     }
   };
 
-  const handleThresholdChange = (category, value) => {
-    setCategoryBudgets((prev) => ({
-      ...prev,
-      [category]: {
-        ...(typeof prev[category] === "object"
-          ? prev[category]
-          : { amount: prev[category] || 0 }),
-        threshold: value,
-      },
-    }));
-  };
-
   const openCategoryModal = () => {
     setShowCategoryModal(true);
     Animated.timing(modalAnim, {
@@ -163,7 +209,6 @@ const ManageCategoriesScreen = () => {
     }
 
     try {
-      // Use addMultipleCategories which is designed to handle multiple categories properly
       await addMultipleCategories(selectedCategories);
       setSelectedCategories([]);
       closeCategoryModal();
@@ -173,38 +218,87 @@ const ManageCategoriesScreen = () => {
     }
   };
 
-  const renderCategory = ({ item }) => (
-    <Animated.View
-      style={[
-        styles.categoryCard,
-        {
-          backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-          shadowColor: theme.text,
-        },
-      ]}
-    >
-      <View style={styles.categoryContent}>
-        <View style={styles.categoryInfo}>
-          <View style={styles.categoryIconContainer}>
-            <Text style={styles.categoryIcon}>🏷️</Text>
-          </View>
-          <Text style={[styles.categoryText, { color: theme.text }]}>
-            {item}
-          </Text>
-        </View>
+  const getCategoryColor = (category, index) => {
+    const colors = [
+      ZENNY_THEME.primary,
+      ZENNY_THEME.secondary,
+      ZENNY_THEME.accent,
+      ZENNY_THEME.success,
+      ZENNY_THEME.warning,
+      ZENNY_THEME.danger,
+    ];
+    return colors[index % colors.length];
+  };
 
-        {!defaultCategories.includes(item) && (
-          <TouchableOpacity
-            onPress={() => handleDeleteCategory(item)}
-            style={styles.deleteButton}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.deleteButtonIcon}>🗑️</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </Animated.View>
-  );
+  const renderCategory = ({ item, index }) => {
+    const categoryColor = getCategoryColor(item, index);
+    const isUsed = receipts.some(
+      (r) => r.category.toLowerCase() === item.toLowerCase()
+    );
+
+    return (
+      <Animated.View
+        style={[
+          styles.categoryCard,
+          {
+            backgroundColor: darkMode ? "#1F2937" : ZENNY_THEME.surface,
+            shadowColor: darkMode ? "#000000" : ZENNY_THEME.shadow,
+          },
+        ]}
+      >
+        <View style={styles.categoryContent}>
+          <View style={styles.categoryInfo}>
+            <View
+              style={[
+                styles.categoryIconContainer,
+                { backgroundColor: categoryColor + "20" },
+              ]}
+            >
+              <Text style={styles.categoryIcon}>🏷️</Text>
+            </View>
+            <View style={styles.categoryDetails}>
+              <Text
+                style={[
+                  styles.categoryText,
+                  { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
+                ]}
+              >
+                {item}
+              </Text>
+              {isUsed && (
+                <Text
+                  style={[
+                    styles.categoryUsage,
+                    { color: darkMode ? "#9CA3AF" : ZENNY_THEME.textMuted },
+                  ]}
+                >
+                  {
+                    receipts.filter(
+                      (r) => r.category.toLowerCase() === item.toLowerCase()
+                    ).length
+                  }{" "}
+                  receipts
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {!defaultCategories.includes(item) && (
+            <TouchableOpacity
+              onPress={() => handleDeleteCategory(item)}
+              style={[
+                styles.deleteButton,
+                { backgroundColor: ZENNY_THEME.dangerBg },
+              ]}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.deleteButtonIcon}>🗑️</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </Animated.View>
+    );
+  };
 
   const renderHeader = () => (
     <Animated.View
@@ -217,20 +311,94 @@ const ManageCategoriesScreen = () => {
       ]}
     >
       <View style={styles.headerContent}>
-        <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-          Welcome to
+        <Text
+          style={[
+            styles.welcomeText,
+            { color: darkMode ? "#9CA3AF" : ZENNY_THEME.textSecondary },
+          ]}
+        >
+          Category Management
         </Text>
-        <Text style={[styles.appName, { color: theme.text }]}>
-          <Text style={styles.zennyAccent}>Categories</Text>
+        <Text
+          style={[
+            styles.appName,
+            { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
+          ]}
+        >
+          Organize Your <Text style={styles.zennyAccent}>Expenses</Text>
         </Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Organize and manage your expense categories
+        <Text
+          style={[
+            styles.subtitle,
+            { color: darkMode ? "#9CA3AF" : ZENNY_THEME.textSecondary },
+          ]}
+        >
+          Create and manage custom categories for better expense tracking
         </Text>
       </View>
     </Animated.View>
   );
 
-  const renderAddSection = () => (
+  const renderTabBar = () => (
+    <View style={styles.tabBar}>
+      <TouchableOpacity
+        style={[
+          styles.tabButton,
+          activeTab === "custom" && styles.activeTabButton,
+          {
+            backgroundColor:
+              activeTab === "custom" ? ZENNY_THEME.primary : "transparent",
+          },
+        ]}
+        onPress={() => setActiveTab("custom")}
+      >
+        <Text
+          style={[
+            styles.tabButtonText,
+            {
+              color:
+                activeTab === "custom"
+                  ? ZENNY_THEME.textInverse
+                  : darkMode
+                  ? "#9CA3AF"
+                  : ZENNY_THEME.textSecondary,
+            },
+          ]}
+        >
+          Custom Categories
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.tabButton,
+          activeTab === "browse" && styles.activeTabButton,
+          {
+            backgroundColor:
+              activeTab === "browse" ? ZENNY_THEME.primary : "transparent",
+          },
+        ]}
+        onPress={() => setActiveTab("browse")}
+      >
+        <Text
+          style={[
+            styles.tabButtonText,
+            {
+              color:
+                activeTab === "browse"
+                  ? ZENNY_THEME.textInverse
+                  : darkMode
+                  ? "#9CA3AF"
+                  : ZENNY_THEME.textSecondary,
+            },
+          ]}
+        >
+          Browse Templates
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderCustomSection = () => (
     <Animated.View
       style={[
         styles.addSection,
@@ -248,29 +416,37 @@ const ManageCategoriesScreen = () => {
       ]}
     >
       <View style={styles.addSectionHeader}>
-        <Text style={[styles.addSectionTitle, { color: theme.text }]}>
-          Add New Category
+        <Text
+          style={[
+            styles.addSectionTitle,
+            { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
+          ]}
+        >
+          Create New Category
         </Text>
         <Text
-          style={[styles.addSectionSubtitle, { color: theme.textSecondary }]}
+          style={[
+            styles.addSectionSubtitle,
+            { color: darkMode ? "#9CA3AF" : ZENNY_THEME.textSecondary },
+          ]}
         >
-          Create custom categories or browse from our collection
+          Add a custom category that fits your spending habits
         </Text>
       </View>
 
       <View style={styles.inputContainer}>
         <TextInput
-          placeholder="Enter custom category name..."
-          placeholderTextColor={theme.textSecondary}
+          placeholder="Enter category name..."
+          placeholderTextColor={darkMode ? "#6B7280" : ZENNY_THEME.textMuted}
           value={newCategory}
           onChangeText={setNewCategory}
           style={[
             styles.input,
             {
-              borderColor: theme.textSecondary + "20",
-              color: theme.text,
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              shadowColor: theme.text,
+              borderColor: darkMode ? "#374151" : ZENNY_THEME.border,
+              color: darkMode ? "#F9FAFB" : ZENNY_THEME.text,
+              backgroundColor: darkMode ? "#1F2937" : ZENNY_THEME.surface,
+              shadowColor: darkMode ? "#000000" : ZENNY_THEME.shadow,
             },
           ]}
         />
@@ -280,7 +456,9 @@ const ManageCategoriesScreen = () => {
           style={[
             styles.addCustomButton,
             {
-              backgroundColor: newCategory.trim() ? "#4CAF50" : "#E0E0E0",
+              backgroundColor: newCategory.trim()
+                ? ZENNY_THEME.success
+                : ZENNY_THEME.border,
             },
           ]}
           activeOpacity={0.8}
@@ -289,30 +467,54 @@ const ManageCategoriesScreen = () => {
           <Text
             style={[
               styles.addCustomButtonText,
-              { color: newCategory.trim() ? "#FFFFFF" : "#666666" },
+              {
+                color: newCategory.trim()
+                  ? ZENNY_THEME.textInverse
+                  : ZENNY_THEME.textMuted,
+              },
             ]}
           >
             Add
           </Text>
         </TouchableOpacity>
       </View>
+    </Animated.View>
+  );
 
-      <View style={styles.dividerContainer}>
-        <View
+  const renderBrowseSection = () => (
+    <Animated.View
+      style={[
+        styles.browseSection,
+        {
+          opacity: contentAnim,
+          transform: [
+            {
+              translateY: contentAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.browseSectionHeader}>
+        <Text
           style={[
-            styles.divider,
-            { backgroundColor: theme.textSecondary + "20" },
+            styles.browseSectionTitle,
+            { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
           ]}
-        />
-        <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
-          or
+        >
+          Popular Categories
         </Text>
-        <View
+        <Text
           style={[
-            styles.divider,
-            { backgroundColor: theme.textSecondary + "20" },
+            styles.browseSectionSubtitle,
+            { color: darkMode ? "#9CA3AF" : ZENNY_THEME.textSecondary },
           ]}
-        />
+        >
+          Choose from our curated collection of common expense categories
+        </Text>
       </View>
 
       <TouchableOpacity
@@ -320,48 +522,95 @@ const ManageCategoriesScreen = () => {
         style={[
           styles.browseButton,
           {
-            backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-            borderColor: theme.textSecondary + "20",
-            shadowColor: theme.text,
+            backgroundColor: darkMode ? "#1F2937" : ZENNY_THEME.surface,
+            borderColor: darkMode ? "#374151" : ZENNY_THEME.border,
+            shadowColor: darkMode ? "#000000" : ZENNY_THEME.shadow,
           },
         ]}
         activeOpacity={0.8}
       >
-        <Text style={styles.browseButtonIcon}>📋</Text>
-        <Text style={[styles.browseButtonText, { color: theme.text }]}>
-          Browse Categories
+        <View style={styles.browseButtonContent}>
+          <Text style={styles.browseButtonIcon}>📋</Text>
+          <View style={styles.browseButtonTextContainer}>
+            <Text
+              style={[
+                styles.browseButtonText,
+                { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
+              ]}
+            >
+              Browse All Categories
+            </Text>
+            <Text
+              style={[
+                styles.browseButtonSubtext,
+                { color: darkMode ? "#9CA3AF" : ZENNY_THEME.textSecondary },
+              ]}
+            >
+              {availableCategories.length} categories available
+            </Text>
+          </View>
+        </View>
+        <Text
+          style={[styles.browseButtonArrow, { color: ZENNY_THEME.primary }]}
+        >
+          →
         </Text>
-        <Text style={styles.browseButtonArrow}>→</Text>
       </TouchableOpacity>
     </Animated.View>
   );
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+      style={[
+        styles.container,
+        { backgroundColor: darkMode ? "#111827" : ZENNY_THEME.background },
+      ]}
     >
       {categories.length === 0 ? (
-        <>
+        <ScrollView showsVerticalScrollIndicator={false}>
           {renderHeader()}
-          {renderAddSection()}
+          {renderTabBar()}
+          {activeTab === "custom"
+            ? renderCustomSection()
+            : renderBrowseSection()}
           <View style={styles.categoriesContainer}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
+              ]}
+            >
               Your Categories
             </Text>
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateIcon}>🏷️</Text>
-              <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
+              <View
+                style={[
+                  styles.emptyStateIconContainer,
+                  { backgroundColor: ZENNY_THEME.primaryBg },
+                ]}
+              >
+                <Text style={styles.emptyStateIcon}>🏷️</Text>
+              </View>
+              <Text
+                style={[
+                  styles.emptyStateTitle,
+                  { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
+                ]}
+              >
                 No categories yet
               </Text>
               <Text
-                style={[styles.emptyStateText, { color: theme.textSecondary }]}
+                style={[
+                  styles.emptyStateText,
+                  { color: darkMode ? "#9CA3AF" : ZENNY_THEME.textSecondary },
+                ]}
               >
-                Add your first category above to get started
+                Start by creating your first category above
               </Text>
             </View>
           </View>
           <View style={styles.bottomSpacing} />
-        </>
+        </ScrollView>
       ) : (
         <FlatList
           data={categories}
@@ -370,10 +619,18 @@ const ManageCategoriesScreen = () => {
           ListHeaderComponent={
             <>
               {renderHeader()}
-              {renderAddSection()}
+              {renderTabBar()}
+              {activeTab === "custom"
+                ? renderCustomSection()
+                : renderBrowseSection()}
               <View style={styles.categoriesContainer}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                  Your Categories
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
+                  ]}
+                >
+                  Your Categories ({categories.length})
                 </Text>
               </View>
             </>
@@ -391,7 +648,10 @@ const ManageCategoriesScreen = () => {
         onRequestClose={closeCategoryModal}
       >
         <SafeAreaView
-          style={[styles.modalContainer, { backgroundColor: theme.background }]}
+          style={[
+            styles.modalContainer,
+            { backgroundColor: darkMode ? "#111827" : ZENNY_THEME.background },
+          ]}
         >
           {/* Header */}
           <View style={styles.modalHeader}>
@@ -399,11 +659,21 @@ const ManageCategoriesScreen = () => {
               onPress={closeCategoryModal}
               style={styles.backButton}
             >
-              <Text style={[styles.backButtonText, { color: theme.text }]}>
+              <Text
+                style={[
+                  styles.backButtonText,
+                  { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
+                ]}
+              >
                 ← Back
               </Text>
             </TouchableOpacity>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>
+            <Text
+              style={[
+                styles.modalTitle,
+                { color: darkMode ? "#F9FAFB" : ZENNY_THEME.text },
+              ]}
+            >
               Browse Categories
             </Text>
             <View style={styles.headerSpacer} />
@@ -412,18 +682,22 @@ const ManageCategoriesScreen = () => {
           {/* Content */}
           <View style={styles.modalContent}>
             <Text
-              style={[styles.modalSubtitle, { color: theme.textSecondary }]}
+              style={[
+                styles.modalSubtitle,
+                { color: darkMode ? "#9CA3AF" : ZENNY_THEME.textSecondary },
+              ]}
             >
-              Select the categories you want to add to your list
+              Select categories to add to your collection
             </Text>
 
             <ScrollView
               style={styles.modalScrollView}
               showsVerticalScrollIndicator={false}
             >
-              {availableCategories.map((category) => {
+              {availableCategories.map((category, index) => {
                 const isSelected = selectedCategories.includes(category);
                 const isAlreadyAdded = categories.includes(category);
+                const categoryColor = getCategoryColor(category, index);
 
                 return (
                   <TouchableOpacity
@@ -432,12 +706,15 @@ const ManageCategoriesScreen = () => {
                       styles.modalItem,
                       {
                         backgroundColor: darkMode
-                          ? theme.cardBackground
-                          : "#FFFFFF",
+                          ? "#1F2937"
+                          : ZENNY_THEME.surface,
                         borderColor: isSelected
-                          ? "#4CAF50"
-                          : theme.textSecondary + "20",
+                          ? categoryColor
+                          : darkMode
+                          ? "#374151"
+                          : ZENNY_THEME.border,
                         opacity: isAlreadyAdded ? 0.6 : 1,
+                        shadowColor: darkMode ? "#000000" : ZENNY_THEME.shadow,
                       },
                     ]}
                     onPress={() =>
@@ -447,26 +724,57 @@ const ManageCategoriesScreen = () => {
                     activeOpacity={0.7}
                   >
                     <View style={styles.modalItemContent}>
-                      <Text
+                      <View
                         style={[
-                          styles.modalItemText,
-                          {
-                            color: isAlreadyAdded
-                              ? theme.textSecondary
-                              : theme.text,
-                          },
+                          styles.modalItemIcon,
+                          { backgroundColor: categoryColor + "20" },
                         ]}
                       >
-                        {category}
-                      </Text>
-                      {isAlreadyAdded && (
-                        <View style={styles.addedBadge}>
-                          <Text style={styles.addedBadgeText}>Added</Text>
-                        </View>
-                      )}
+                        <Text style={styles.modalItemIconText}>🏷️</Text>
+                      </View>
+                      <View style={styles.modalItemTextContainer}>
+                        <Text
+                          style={[
+                            styles.modalItemText,
+                            {
+                              color: isAlreadyAdded
+                                ? darkMode
+                                  ? "#6B7280"
+                                  : ZENNY_THEME.textMuted
+                                : darkMode
+                                ? "#F9FAFB"
+                                : ZENNY_THEME.text,
+                            },
+                          ]}
+                        >
+                          {category}
+                        </Text>
+                        {isAlreadyAdded && (
+                          <View
+                            style={[
+                              styles.addedBadge,
+                              { backgroundColor: ZENNY_THEME.successBg },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.addedBadgeText,
+                                { color: ZENNY_THEME.success },
+                              ]}
+                            >
+                              Added
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                     {isSelected && (
-                      <View style={styles.checkmarkContainer}>
+                      <View
+                        style={[
+                          styles.checkmarkContainer,
+                          { backgroundColor: categoryColor },
+                        ]}
+                      >
                         <Text style={styles.checkmark}>✓</Text>
                       </View>
                     )}
@@ -483,7 +791,9 @@ const ManageCategoriesScreen = () => {
                 styles.modalButton,
                 {
                   backgroundColor:
-                    selectedCategories.length > 0 ? "#4CAF50" : "#E0E0E0",
+                    selectedCategories.length > 0
+                      ? ZENNY_THEME.success
+                      : ZENNY_THEME.border,
                 },
               ]}
               onPress={handleAddSelectedCategories}
@@ -495,14 +805,16 @@ const ManageCategoriesScreen = () => {
                   styles.modalButtonText,
                   {
                     color:
-                      selectedCategories.length > 0 ? "#FFFFFF" : "#666666",
+                      selectedCategories.length > 0
+                        ? ZENNY_THEME.textInverse
+                        : ZENNY_THEME.textMuted,
                   },
                 ]}
               >
                 {selectedCategories.length === 0
                   ? "No categories selected"
-                  : `Add ${selectedCategories.length} category${
-                      selectedCategories.length > 1 ? "ies" : "y"
+                  : `Add ${selectedCategories.length} categor${
+                      selectedCategories.length === 1 ? "y" : "ies"
                     }`}
               </Text>
             </TouchableOpacity>
@@ -517,12 +829,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.screen,
-  },
   header: {
     alignItems: "center",
     paddingVertical: 32,
@@ -534,18 +840,18 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
     marginBottom: 8,
     opacity: 0.8,
   },
   appName: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "800",
     marginBottom: 12,
     textAlign: "center",
   },
   zennyAccent: {
-    color: "#4CAF50",
+    color: ZENNY_THEME.primary,
   },
   subtitle: {
     fontSize: 15,
@@ -553,6 +859,32 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
     opacity: 0.7,
+  },
+  tabBar: {
+    flexDirection: "row",
+    marginHorizontal: spacing.screen,
+    marginBottom: 24,
+    backgroundColor: "#F3F4F6",
+    borderRadius: radius.medium,
+    padding: 4,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: radius.small,
+    alignItems: "center",
+  },
+  activeTabButton: {
+    shadowColor: ZENNY_THEME.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   addSection: {
     marginBottom: 32,
@@ -617,26 +949,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  dividerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
+  browseSection: {
+    marginBottom: 32,
+    paddingHorizontal: spacing.screen,
   },
-  divider: {
-    flex: 1,
-    height: 1,
+  browseSectionHeader: {
+    marginBottom: 20,
   },
-  dividerText: {
+  browseSectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  browseSectionSubtitle: {
     fontSize: 14,
-    fontWeight: "500",
-    marginHorizontal: 16,
-    opacity: 0.6,
+    lineHeight: 20,
   },
   browseButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 16,
+    paddingVertical: 20,
     paddingHorizontal: 20,
     borderRadius: radius.medium,
     borderWidth: 1,
@@ -651,19 +981,30 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  browseButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
   browseButtonIcon: {
-    fontSize: 20,
-    marginRight: 12,
+    fontSize: 24,
+    marginRight: 16,
+  },
+  browseButtonTextContainer: {
+    flex: 1,
   },
   browseButtonText: {
-    flex: 1,
     fontSize: 16,
     fontWeight: "600",
+    marginBottom: 2,
+  },
+  browseButtonSubtext: {
+    fontSize: 14,
+    fontWeight: "400",
   },
   browseButtonArrow: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "600",
-    color: "#4CAF50",
   },
   categoriesContainer: {
     marginBottom: 24,
@@ -705,27 +1046,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoryIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#4CAF50" + "20",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 16,
   },
   categoryIcon: {
-    fontSize: 18,
+    fontSize: 20,
+  },
+  categoryDetails: {
+    flex: 1,
   },
   categoryText: {
     fontSize: 17,
     fontWeight: "600",
-    flex: 1,
+    marginBottom: 2,
+  },
+  categoryUsage: {
+    fontSize: 13,
+    fontWeight: "400",
   },
   deleteButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#FF3B30" + "20",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -737,10 +1083,16 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     paddingHorizontal: 40,
   },
-  emptyStateIcon: {
-    fontSize: 64,
+  emptyStateIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 20,
-    opacity: 0.8,
+  },
+  emptyStateIcon: {
+    fontSize: 32,
   },
   emptyStateTitle: {
     fontSize: 22,
@@ -767,7 +1119,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
+    borderBottomColor: ZENNY_THEME.border,
   },
   backButton: {
     paddingVertical: 8,
@@ -822,6 +1174,22 @@ const styles = StyleSheet.create({
   modalItemContent: {
     flex: 1,
     flexDirection: "row",
+    alignItems: "center",
+  },
+  modalItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  modalItemIconText: {
+    fontSize: 16,
+  },
+  modalItemTextContainer: {
+    flex: 1,
+    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
@@ -831,7 +1199,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addedBadge: {
-    backgroundColor: "#E0E0E0",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -840,19 +1207,17 @@ const styles = StyleSheet.create({
   addedBadgeText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#666666",
   },
   checkmarkContainer: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#4CAF50",
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 12,
   },
   checkmark: {
-    color: "#FFFFFF",
+    color: ZENNY_THEME.textInverse,
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -860,7 +1225,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     paddingVertical: 20,
     borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
+    borderTopColor: ZENNY_THEME.border,
   },
   modalButton: {
     paddingVertical: 16,

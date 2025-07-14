@@ -14,6 +14,9 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { DataProvider } from "./context/DataContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import AuthScreen from "./screens/AuthScreen";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Onboarding from "./components/Onboarding";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -37,37 +40,27 @@ function MainApp() {
 }
 
 export default function App() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged((user) => {
-      setLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  if (loading) return null; // Optional: replace with splash screen or loading spinner
-
   return (
-    <ThemeProvider>
-      <DataProvider>
-        <CurrencyProvider>
-          <NotificationProvider>
-            <CategoryProvider>
-              <BudgetProvider>
-                <ReceiptProvider>
-                  <IncomeProvider>
-                    <AuthProvider>
-                      <MainApp />
-                    </AuthProvider>
-                  </IncomeProvider>
-                </ReceiptProvider>
-              </BudgetProvider>
-            </CategoryProvider>
-          </NotificationProvider>
-        </CurrencyProvider>
-      </DataProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <DataProvider>
+          <CurrencyProvider>
+            <NotificationProvider>
+              <CategoryProvider>
+                <BudgetProvider>
+                  <ReceiptProvider>
+                    <IncomeProvider>
+                      <AuthProvider>
+                        <MainApp />
+                      </AuthProvider>
+                    </IncomeProvider>
+                  </ReceiptProvider>
+                </BudgetProvider>
+              </CategoryProvider>
+            </NotificationProvider>
+          </CurrencyProvider>
+        </DataProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

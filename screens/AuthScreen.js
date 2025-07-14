@@ -17,6 +17,8 @@ import { lightTheme, darkTheme } from "../constants/themes";
 import auth from "@react-native-firebase/auth";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Onboarding from "../components/Onboarding";
 
 const { width, height } = Dimensions.get("window");
 
@@ -28,6 +30,7 @@ const AuthScreen = ({ onAuthSuccess }) => {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Make theme optional to avoid potential context issues
   const themeContext = useContext(ThemeContext);
@@ -63,13 +66,16 @@ const AuthScreen = ({ onAuthSuccess }) => {
           email,
           password
         );
+        setShowOnboarding(true); // Always show onboarding after sign-up
+        return; // Do not proceed to main app yet
       } else {
         userCredential = await auth().signInWithEmailAndPassword(
           email,
           password
         );
+        Alert.alert("Success", "Logged in!");
+        onAuthSuccess?.();
       }
-      Alert.alert("Success", isSigningUp ? "Account created!" : "Logged in!");
     } catch (err) {
       Alert.alert("Auth Error", err.message);
     } finally {
@@ -135,6 +141,17 @@ const AuthScreen = ({ onAuthSuccess }) => {
       setIsLoading(false);
     }
   };
+
+  if (showOnboarding) {
+    return (
+      <Onboarding
+        onFinish={() => {
+          setShowOnboarding(false);
+          onAuthSuccess?.();
+        }}
+      />
+    );
+  }
 
   return (
     <KeyboardAvoidingView

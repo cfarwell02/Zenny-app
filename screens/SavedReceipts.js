@@ -1,4 +1,11 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import {
   View,
   Text,
@@ -6,6 +13,8 @@ import {
   StyleSheet,
   FlatList,
   TextInput,
+  TouchableWithoutFeedback,
+  Keyboard,
   TouchableOpacity,
   Modal,
   Alert,
@@ -13,7 +22,6 @@ import {
   Dimensions,
   Animated,
   ScrollView,
-  StatusBar,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,15 +29,17 @@ import { ReceiptContext } from "../context/ReceiptContext";
 import { BudgetContext } from "../context/BudgetContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { lightTheme, darkTheme } from "../constants/themes";
-import { spacing } from "../constants/spacing";
-import { radius } from "../constants/radius";
+import { spacing, layout } from "../constants/spacing";
+import { radius, borderRadius } from "../constants/radius";
+import { typography, textStyles } from "../constants/typography";
+import { elevation } from "../constants/shadows";
 import { useCurrency } from "../context/CurrencyContext";
 import { Picker } from "@react-native-picker/picker";
 import { CategoryContext } from "../context/CategoryContext";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-const SavedReceipts = () => {
+const SavedReceipts = forwardRef((props, ref) => {
   const { receipts, deleteReceipt } = useContext(ReceiptContext);
   const { darkMode } = useContext(ThemeContext);
   const { categories } = useContext(CategoryContext);
@@ -37,18 +47,19 @@ const SavedReceipts = () => {
     useContext(BudgetContext);
   const { formatCurrency, convertCurrency } = useCurrency();
   const [searchTag, setSearchTag] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryItems, setCategoryItems] = useState([]);
   const theme = darkMode ? darkTheme : lightTheme;
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [viewMode, setViewMode] = useState("grid"); // "grid" or "list"
+  // Add filter state
+  const [recurringFilter, setRecurringFilter] = useState("all"); // 'all', 'recurring', 'nonrecurring'
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
-  const cardAnims = useRef([]).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
 
   const navigation = useNavigation();
   const isValidUri = (uri) =>
@@ -56,16 +67,8 @@ const SavedReceipts = () => {
     uri.startsWith("file");
 
   useEffect(() => {
-    // Initialize card animations
-    cardAnims.length = receipts.length;
-    for (let i = 0; i < receipts.length; i++) {
-      if (!cardAnims[i]) {
-        cardAnims[i] = new Animated.Value(0);
-      }
-    }
-
-    // Animate header
-    Animated.parallel([
+    // Staggered entrance animations
+    Animated.stagger(150, [
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 800,
@@ -76,22 +79,17 @@ const SavedReceipts = () => {
         duration: 600,
         useNativeDriver: true,
       }),
-    ]).start();
-
-    // Animate cards with stagger
-    const cardAnimations = cardAnims.map((anim, index) =>
-      Animated.timing(anim, {
+      Animated.timing(contentAnim, {
         toValue: 1,
-        duration: 500,
-        delay: index * 100,
+        duration: 600,
+        delay: 300,
         useNativeDriver: true,
-      })
-    );
-
-    Animated.stagger(100, cardAnimations).start();
-  }, [receipts.length]);
+      }),
+    ]).start();
+  }, []);
 
   useEffect(() => {
+    console.log("Categories from context:", categories);
     const formatted = [
       { label: "All Categories", value: null },
       ...categories.map((cat) => ({
@@ -99,151 +97,77 @@ const SavedReceipts = () => {
         value: cat,
       })),
     ];
+    console.log("Formatted dropdown items:", formatted);
     setCategoryItems(formatted);
   }, [categories]);
 
-  const renderGridCard = ({ item, index }) => (
-    <Animated.View
-      style={[
-        styles.cardContainer,
-        {
-          opacity: cardAnims[index] || 1,
-          transform: [
-            {
-              translateY:
-                cardAnims[index]?.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0],
-                }) || 0,
-            },
-          ],
-        },
-      ]}
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      onPress={() => {
+        setSelectedReceipt(item);
+        setModalVisible(true);
+      }}
+      activeOpacity={0.8}
     >
-      <TouchableOpacity
-        onPress={() => {
-          setSelectedReceipt(item);
-          setModalVisible(true);
-        }}
-        activeOpacity={0.8}
+      <View
+        style={[
+          styles.receiptCard,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
       >
-        <View
-          style={[
-            styles.receiptCard,
-            {
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              shadowColor: theme.text,
-            },
-          ]}
-        >
-          {/* Receipt Image */}
-          <View style={styles.imageContainer}>
-            {item.image && isValidUri(item.image) ? (
-              <Image source={{ uri: item.image }} style={styles.receiptImage} />
-            ) : (
-              <View style={styles.noImageContainer}>
-                <Text style={styles.noImageIcon}>🧾</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Receipt Info */}
-          <View style={styles.receiptInfo}>
-            <Text style={[styles.receiptAmount, { color: theme.text }]}>
-              {formatCurrency(convertCurrency(item.amount))}
-            </Text>
-            <Text style={[styles.receiptCategory, { color: theme.subtleText }]}>
-              {item.category}
-            </Text>
-            {item.tag && (
-              <Text style={[styles.receiptTag, { color: theme.primary }]}>
-                #{item.tag}
-              </Text>
-            )}
-            <Text style={[styles.receiptDate, { color: theme.subtleText }]}>
-              {new Date(item.date).toLocaleDateString()}
+        {item.image && isValidUri(item.image) ? (
+          <Image source={{ uri: item.image }} style={styles.receiptImage} />
+        ) : (
+          <View
+            style={[
+              styles.noImageContainer,
+              {
+                backgroundColor: theme.surfaceSecondary,
+                borderColor: theme.borderLight,
+              },
+            ]}
+          >
+            <Text style={styles.noImageIcon}>🧾</Text>
+            <Text style={[styles.noImageText, { color: theme.subtleText }]}>
+              No Image
             </Text>
           </View>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-
-  const renderListCard = ({ item, index }) => (
-    <Animated.View
-      style={[
-        styles.listCardContainer,
-        {
-          opacity: cardAnims[index] || 1,
-          transform: [
-            {
-              translateY:
-                cardAnims[index]?.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0],
-                }) || 0,
-            },
-          ],
-        },
-      ]}
-    >
-      <TouchableOpacity
-        onPress={() => {
-          setSelectedReceipt(item);
-          setModalVisible(true);
-        }}
-        activeOpacity={0.8}
-      >
-        <View
-          style={[
-            styles.listCard,
-            {
-              backgroundColor: darkMode ? theme.cardBackground : "#FFFFFF",
-              shadowColor: theme.text,
-            },
-          ]}
-        >
-          {/* Receipt Image */}
-          <View style={styles.listImageContainer}>
-            {item.image && isValidUri(item.image) ? (
-              <Image
-                source={{ uri: item.image }}
-                style={styles.listReceiptImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.listNoImageContainer}>
-                <Text style={styles.listNoImageIcon}>🧾</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Receipt Details */}
-          <View style={styles.listCardDetails}>
-            <View style={styles.listCardHeader}>
-              <Text style={[styles.listCardAmount, { color: theme.text }]}>
-                {formatCurrency(convertCurrency(item.amount))}
-              </Text>
+        )}
+        <View style={styles.receiptInfo}>
+          <Text style={[styles.receiptAmount, { color: theme.text }]}>
+            {formatCurrency(convertCurrency(item.amount))}
+          </Text>
+          <Text style={[styles.receiptCategory, { color: theme.subtleText }]}>
+            {item.category}
+          </Text>
+          {item.tag && (
+            <Text style={[styles.receiptTag, { color: theme.success }]}>
+              #{item.tag}
+            </Text>
+          )}
+          {(item.isRecurring || item.recurrence) && (
+            <View
+              style={[
+                styles.recurringCheck,
+                { backgroundColor: "transparent" },
+              ]}
+            >
               <Text
-                style={[styles.listCardCategory, { color: theme.subtleText }]}
+                style={[
+                  styles.recurringCheckMark,
+                  { color: theme.accent || theme.primary },
+                ]}
               >
-                {item.category}
+                ✓
               </Text>
             </View>
-
-            {item.tag && (
-              <Text style={[styles.listCardTag, { color: theme.primary }]}>
-                #{item.tag}
-              </Text>
-            )}
-
-            <Text style={[styles.listCardDate, { color: theme.subtleText }]}>
-              {new Date(item.date).toLocaleDateString()}
-            </Text>
-          </View>
+          )}
         </View>
-      </TouchableOpacity>
-    </Animated.View>
+      </View>
+    </TouchableOpacity>
   );
 
   const filteredReceipts = receipts.filter((r) => {
@@ -255,11 +179,22 @@ const SavedReceipts = () => {
       selectedCategory && selectedCategory !== ""
         ? r.category.toLowerCase() === selectedCategory.toLowerCase()
         : true;
-    return tagMatch && categoryMatch;
+    const recurringMatch =
+      recurringFilter === "all"
+        ? true
+        : recurringFilter === "recurring"
+        ? r.isRecurring || !!r.recurrence
+        : !(r.isRecurring || !!r.recurrence);
+    return tagMatch && categoryMatch && recurringMatch;
   });
 
   const handleDeleteReceipt = async (id) => {
+    console.log("🧨 Trying to delete receipt with ID:", id);
+    console.log("🧨 ID type:", typeof id);
+    console.log("🧨 Selected receipt:", selectedReceipt);
+
     if (!id) {
+      console.error("❌ No ID provided for deletion");
       Alert.alert("Error", "Cannot delete receipt: No ID found");
       return;
     }
@@ -271,12 +206,15 @@ const SavedReceipts = () => {
         selectedReceipt.category
       ) {
         removeExpense(selectedReceipt.id);
+        console.log(`✅ Removed expense from stats`);
       }
 
+      // Delete the receipt
       await deleteReceipt(id);
+      console.log("✅ Successfully deleted receipt");
       setModalVisible(false);
     } catch (error) {
-      console.error("Error deleting receipt:", error);
+      console.error("❌ Error deleting receipt:", error);
       Alert.alert("Error", "Failed to delete receipt. Please try again.");
     }
   };
@@ -286,27 +224,35 @@ const SavedReceipts = () => {
       style={[
         styles.emptyStateContainer,
         {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
+          opacity: contentAnim,
+          transform: [
+            {
+              translateY: contentAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
         },
       ]}
     >
-      <View style={styles.emptyStateIconContainer}>
-        <Text style={styles.emptyStateIcon}>🧾</Text>
+      <View
+        style={[
+          styles.emptyStateIconContainer,
+          { backgroundColor: theme.primaryBg },
+        ]}
+      >
+        <Text style={[styles.emptyStateIcon, { color: theme.primary }]}>
+          📋
+        </Text>
       </View>
       <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
         No receipts yet
       </Text>
       <Text style={[styles.emptyStateSubtitle, { color: theme.subtleText }]}>
-        Start tracking your expenses by adding your first receipt.
+        When you add a receipt, it will show up here for easy tracking and
+        filtering.
       </Text>
-
-      <TouchableOpacity
-        style={[styles.addFirstButton, { backgroundColor: theme.primary }]}
-        onPress={() => navigation.navigate("Add Receipt")}
-      >
-        <Text style={styles.addFirstButtonText}>Add Your First Receipt</Text>
-      </TouchableOpacity>
     </Animated.View>
   );
 
@@ -320,16 +266,14 @@ const SavedReceipts = () => {
         },
       ]}
     >
-      <View style={styles.headerTop}>
-        <Text style={[styles.appName, { color: theme.text }]}>Receipts</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Add Receipt")}>
-          <Text style={{ fontSize: 20 }}>📷</Text>
-        </TouchableOpacity>
+      <View style={styles.headerContent}>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          Saved Receipts
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.subtleText }]}>
+          Track and manage your expenses
+        </Text>
       </View>
-      <Text style={[styles.headerSubtitle, { color: theme.subtleText }]}>
-        {receipts.length} receipt{receipts.length !== 1 ? "s" : ""} •{" "}
-        {filteredReceipts.length} showing
-      </Text>
     </Animated.View>
   );
 
@@ -338,851 +282,1077 @@ const SavedReceipts = () => {
       style={[
         styles.filtersContainer,
         {
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
+          opacity: contentAnim,
+          transform: [
+            {
+              translateY: contentAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+          ],
         },
       ]}
     >
       {/* Search Input */}
       <View style={styles.searchContainer}>
-        <View
+        <TextInput
+          placeholder="Search by tag..."
+          placeholderTextColor={theme.textMuted}
+          value={searchTag}
+          onChangeText={setSearchTag}
           style={[
-            styles.searchWrapper,
+            styles.searchInput,
             {
-              borderColor: isSearchFocused ? theme.primary : theme.border,
-              backgroundColor: theme.cardBackground,
+              borderColor: theme.border,
+              backgroundColor: theme.surface,
+              color: theme.text,
             },
           ]}
-        >
-          <Text style={[styles.searchIcon, { color: theme.subtleText }]}>
-            🔍
-          </Text>
-          <TextInput
-            placeholder="Search by tag..."
-            placeholderTextColor={theme.subtleText}
-            value={searchTag}
-            onChangeText={setSearchTag}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
-            style={[styles.searchInput, { color: theme.text }]}
-          />
-          {searchTag.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearchTag("")}
-              style={styles.clearButton}
-            >
-              <Text
-                style={[styles.clearButtonText, { color: theme.subtleText }]}
-              >
-                ✕
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        />
       </View>
 
       {/* Category Filter */}
-      <View style={styles.filterRow}>
-        <View
-          style={[
-            styles.pickerWrapper,
-            { backgroundColor: theme.cardBackground },
-          ]}
+      <View
+        style={[
+          styles.pickerContainer,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <Picker
+          selectedValue={selectedCategory}
+          onValueChange={(itemValue) => setSelectedCategory(itemValue)}
+          style={[styles.picker, { color: theme.textMuted }]}
         >
-          <Text style={[styles.filterLabel, { color: theme.subtleText }]}>
-            Category
-          </Text>
-          <Picker
-            selectedValue={selectedCategory}
-            onValueChange={(itemValue) => setSelectedCategory(itemValue)}
-            style={[styles.picker, { color: theme.text }]}
-            dropdownIconColor={theme.text}
-          >
-            <Picker.Item label="All Categories" value={null} />
-            {categories.map((cat) => (
-              <Picker.Item key={cat} label={cat} value={cat} />
-            ))}
-          </Picker>
-        </View>
-
-        {selectedCategory && (
-          <TouchableOpacity
-            style={[
-              styles.clearFilterButton,
-              { backgroundColor: theme.danger },
-            ]}
-            onPress={() => setSelectedCategory(null)}
-          >
-            <Text style={styles.clearFilterText}>Clear</Text>
-          </TouchableOpacity>
-        )}
+          <Picker.Item label="All Categories" value={null} />
+          {categories.map((cat) => (
+            <Picker.Item key={cat} label={cat} value={cat} />
+          ))}
+        </Picker>
       </View>
     </Animated.View>
   );
 
-  return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <StatusBar
-        barStyle={darkMode ? "light-content" : "dark-content"}
-        backgroundColor={theme.background}
-      />
-
-      {receipts.length === 0 ? (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+  // Add recurring filter UI above receipts grid
+  const renderRecurringFilter = () => (
+    <View style={styles.filterRow}>
+      <TouchableOpacity
+        style={[
+          styles.filterButton,
+          recurringFilter === "all" && { backgroundColor: theme.primary },
+        ]}
+        onPress={() => setRecurringFilter("all")}
+      >
+        <Text
+          style={[
+            styles.filterButtonText,
+            {
+              color: recurringFilter === "all" ? theme.textInverse : theme.text,
+            },
+          ]}
         >
-          {renderHeader()}
-          {renderEmptyState()}
-        </ScrollView>
-      ) : (
-        <View style={styles.mainContainer}>
-          {/* Fixed Header and Filters */}
-          <View style={styles.fixedHeader}>
+          All
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.filterButton,
+          recurringFilter === "recurring" && { backgroundColor: theme.primary },
+        ]}
+        onPress={() => setRecurringFilter("recurring")}
+      >
+        <Text
+          style={[
+            styles.filterButtonText,
+            {
+              color:
+                recurringFilter === "recurring"
+                  ? theme.textInverse
+                  : theme.text,
+            },
+          ]}
+        >
+          Recurring
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.filterButton,
+          recurringFilter === "nonrecurring" && {
+            backgroundColor: theme.primary,
+          },
+        ]}
+        onPress={() => setRecurringFilter("nonrecurring")}
+      >
+        <Text
+          style={[
+            styles.filterButtonText,
+            {
+              color:
+                recurringFilter === "nonrecurring"
+                  ? theme.textInverse
+                  : theme.text,
+            },
+          ]}
+        >
+          Non-Recurring
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // SOLUTION 2: Use ScrollView instead of FlatList when dropdown is open
+  if (categoryOpen) {
+    return (
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={styles.container}>
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContentWithDropdown}
+          >
             {renderHeader()}
             {renderSearchAndFilters()}
-          </View>
+            {renderRecurringFilter()}
 
-          {/* View Mode Toggle */}
-          <View style={styles.viewModeContainer}>
-            <View
-              style={[
-                styles.viewModeWrapper,
-                { backgroundColor: theme.cardBackground },
-              ]}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.viewModeButton,
-                  viewMode === "grid" && { backgroundColor: theme.primary },
-                ]}
-                onPress={() => setViewMode("grid")}
-              >
-                <Text
-                  style={[
-                    styles.viewModeText,
-                    {
-                      color: viewMode === "grid" ? "#FFFFFF" : theme.subtleText,
-                    },
-                  ]}
-                >
-                  ⬜
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.viewModeButton,
-                  viewMode === "list" && { backgroundColor: theme.primary },
-                ]}
-                onPress={() => setViewMode("list")}
-              >
-                <Text
-                  style={[
-                    styles.viewModeText,
-                    {
-                      color: viewMode === "list" ? "#FFFFFF" : theme.subtleText,
-                    },
-                  ]}
-                >
-                  ☰
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* FlatList */}
-          <FlatList
-            key={viewMode} // Force re-render when view mode changes
-            data={filteredReceipts}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={viewMode === "grid" ? 2 : 1}
-            renderItem={viewMode === "grid" ? renderGridCard : renderListCard}
-            contentContainerStyle={[
-              styles.flatListContent,
-              viewMode === "list" && styles.listFlatListContent,
-            ]}
-            columnWrapperStyle={
-              viewMode === "grid" ? styles.gridRow : undefined
-            }
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
+            {/* Render receipts grid manually when dropdown is open */}
+            {filteredReceipts.length > 0 ? (
+              <View style={styles.receiptsGrid}>
+                {filteredReceipts.map((item, index) => (
+                  <View key={item.id.toString()} style={styles.gridItemWrapper}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedReceipt(item);
+                        setModalVisible(true);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View
+                        style={[
+                          styles.receiptCard,
+                          {
+                            backgroundColor: theme.surface,
+                            borderColor: theme.border,
+                          },
+                        ]}
+                      >
+                        {item.image && isValidUri(item.image) ? (
+                          <Image
+                            source={{ uri: item.image }}
+                            style={styles.receiptImage}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.noImageContainer,
+                              {
+                                backgroundColor: theme.surfaceSecondary,
+                                borderColor: theme.borderLight,
+                              },
+                            ]}
+                          >
+                            <Text style={styles.noImageIcon}>🧾</Text>
+                            <Text
+                              style={[
+                                styles.noImageText,
+                                { color: theme.textMuted },
+                              ]}
+                            >
+                              No Image
+                            </Text>
+                          </View>
+                        )}
+                        <View style={styles.receiptInfo}>
+                          <Text
+                            style={[
+                              styles.receiptAmount,
+                              { color: theme.text },
+                            ]}
+                          >
+                            {formatCurrency(convertCurrency(item.amount))}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.receiptCategory,
+                              { color: theme.subtleText },
+                            ]}
+                          >
+                            {item.category}
+                          </Text>
+                          {item.tag && (
+                            <Text
+                              style={[
+                                styles.receiptTag,
+                                { color: theme.success },
+                              ]}
+                            >
+                              #{item.tag}
+                            </Text>
+                          )}
+                          {(item.isRecurring || item.recurrence) && (
+                            <View
+                              style={[
+                                styles.recurringCheck,
+                                { backgroundColor: "transparent" },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.recurringCheckMark,
+                                  { color: theme.accent || theme.primary },
+                                ]}
+                              >
+                                ✓
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : (
               <View style={styles.noResultsContainer}>
-                <Text
-                  style={[styles.noResultsIcon, { color: theme.subtleText }]}
-                >
-                  🔍
-                </Text>
                 <Text
                   style={[styles.noResultsText, { color: theme.subtleText }]}
                 >
-                  No receipts found matching your search
+                  No matching receipts found.
                 </Text>
-                <TouchableOpacity
-                  style={[
-                    styles.resetFiltersButton,
-                    { backgroundColor: theme.primary },
-                  ]}
-                  onPress={() => {
-                    setSearchTag("");
-                    setSelectedCategory(null);
-                  }}
-                >
-                  <Text style={styles.resetFiltersText}>Reset Filters</Text>
-                </TouchableOpacity>
               </View>
-            }
-            ListFooterComponent={<View style={styles.bottomSpacing} />}
-          />
-        </View>
-      )}
+            )}
 
-      {/* Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.modalCard,
-              {
-                backgroundColor: darkMode ? "#000000" : "#FFFFFF",
-              },
-            ]}
+            <View style={styles.bottomSpacing} />
+          </ScrollView>
+
+          {/* Modal */}
+          <Modal
+            visible={modalVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setModalVisible(false)}
           >
-            {/* Close Button */}
-            <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              style={styles.closeButton}
-            >
-              <Text style={[styles.closeText, { color: theme.danger }]}>×</Text>
-            </TouchableOpacity>
+            <View style={styles.modalOverlay}>
+              <View
+                style={[
+                  styles.modalCard,
+                  {
+                    backgroundColor: theme.surface,
+                    borderColor: theme.borderLight,
+                  },
+                ]}
+              >
+                {/* Close Button */}
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  style={[
+                    styles.closeButton,
+                    { backgroundColor: theme.dangerBg },
+                  ]}
+                >
+                  <Text style={[styles.closeText, { color: theme.danger }]}>
+                    ×
+                  </Text>
+                </TouchableOpacity>
 
-            {selectedReceipt && (
-              <>
-                {/* Receipt Image */}
-                <View style={styles.modalImageContainer}>
+                {selectedReceipt && (
+                  <>
+                    {selectedReceipt.image ? (
+                      <Image
+                        source={{ uri: selectedReceipt.image }}
+                        style={[
+                          styles.modalImage,
+                          { borderColor: theme.borderLight },
+                        ]}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.modalNoImage,
+                          {
+                            backgroundColor: theme.primaryBg,
+                            borderColor: theme.borderLight,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.modalNoImageIcon,
+                            { color: theme.primary },
+                          ]}
+                        >
+                          🧾
+                        </Text>
+                        <Text
+                          style={[
+                            styles.modalNoImageText,
+                            { color: theme.textMuted },
+                          ]}
+                        >
+                          Image not available
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={styles.modalInfo}>
+                      <Text style={[styles.modalAmount, { color: theme.text }]}>
+                        {formatCurrency(
+                          convertCurrency(selectedReceipt.amount)
+                        )}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.modalCategory,
+                          { color: theme.textMuted },
+                        ]}
+                      >
+                        {selectedReceipt.category}
+                      </Text>
+                      <Text
+                        style={[styles.modalTag, { color: theme.textMuted }]}
+                      >
+                        #{selectedReceipt.tag || "No tag"}
+                      </Text>
+                      {(selectedReceipt.isRecurring ||
+                        selectedReceipt.recurrence) && (
+                        <View style={styles.modalRecurringRow}>
+                          <Text
+                            style={[
+                              styles.modalRecurringText,
+                              { color: theme.accent || theme.primary },
+                            ]}
+                          >
+                            Recurring
+                          </Text>
+                          {selectedReceipt.recurrence && (
+                            <Text
+                              style={[
+                                styles.modalRecurringFreq,
+                                { color: theme.textSecondary },
+                              ]}
+                            >
+                              (
+                              {selectedReceipt.recurrence
+                                .charAt(0)
+                                .toUpperCase() +
+                                selectedReceipt.recurrence.slice(1)}
+                              )
+                            </Text>
+                          )}
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.modalButtonRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.editButton,
+                          { backgroundColor: theme.primary },
+                        ]}
+                        onPress={() => {
+                          setModalVisible(false);
+                          navigation.navigate("Add Receipt", {
+                            receiptToEdit: selectedReceipt,
+                          });
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text
+                          style={[
+                            styles.buttonText,
+                            { color: theme.textInverse },
+                          ]}
+                        >
+                          Edit
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.deleteButton,
+                          { backgroundColor: theme.danger },
+                        ]}
+                        onPress={() => {
+                          Alert.alert(
+                            "Delete Receipt",
+                            "Are you sure you want to delete this receipt?",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Delete",
+                                style: "destructive",
+                                onPress: () =>
+                                  handleDeleteReceipt(selectedReceipt.id),
+                              },
+                            ]
+                          );
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text
+                          style={[
+                            styles.buttonText,
+                            { color: theme.textInverse },
+                          ]}
+                        >
+                          Delete
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+              </View>
+            </View>
+          </Modal>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
+    );
+  }
+
+  return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        {receipts.length === 0 ? (
+          <ScrollView
+            style={[styles.scrollView, { backgroundColor: theme.background }]}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {renderHeader()}
+            {renderEmptyState()}
+            <View style={styles.bottomSpacing} />
+          </ScrollView>
+        ) : (
+          <View
+            style={[styles.container, { backgroundColor: theme.background }]}
+          >
+            {/* Fixed Header and Filters */}
+            <View style={styles.fixedHeader}>
+              {renderHeader()}
+              {renderSearchAndFilters()}
+              {renderRecurringFilter()}
+            </View>
+
+            {/* FlatList for receipts */}
+            <FlatList
+              data={filteredReceipts}
+              keyExtractor={(item) => item.id.toString()}
+              numColumns={3}
+              renderItem={renderItem}
+              contentContainerStyle={styles.flatListContent}
+              columnWrapperStyle={styles.gridRow}
+              ListEmptyComponent={
+                <View style={styles.noResultsContainer}>
+                  <Text
+                    style={[styles.noResultsText, { color: theme.subtleText }]}
+                  >
+                    No matching receipts found.
+                  </Text>
+                </View>
+              }
+              ListFooterComponent={<View style={styles.bottomSpacing} />}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        )}
+
+        {/* Modal */}
+        <Modal
+          visible={modalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.modalCard,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.borderLight,
+                },
+              ]}
+            >
+              {/* Close Button */}
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={[
+                  styles.closeButton,
+                  { backgroundColor: theme.dangerBg },
+                ]}
+              >
+                <Text style={[styles.closeText, { color: theme.danger }]}>
+                  ×
+                </Text>
+              </TouchableOpacity>
+
+              {selectedReceipt && (
+                <>
                   {selectedReceipt.image ? (
                     <Image
                       source={{ uri: selectedReceipt.image }}
-                      style={styles.modalImage}
-                      resizeMode="cover"
+                      style={[
+                        styles.modalImage,
+                        { borderColor: theme.borderLight },
+                      ]}
                     />
                   ) : (
                     <View
                       style={[
                         styles.modalNoImage,
-                        { backgroundColor: theme.border },
+                        {
+                          backgroundColor: theme.primaryBg,
+                          borderColor: theme.borderLight,
+                        },
                       ]}
                     >
-                      <Text style={styles.modalNoImageIcon}>🧾</Text>
+                      <Text
+                        style={[
+                          styles.modalNoImageIcon,
+                          { color: theme.primary },
+                        ]}
+                      >
+                        🧾
+                      </Text>
                       <Text
                         style={[
                           styles.modalNoImageText,
-                          { color: theme.subtleText },
+                          { color: theme.textMuted },
                         ]}
                       >
-                        No Image Available
+                        Image not available
                       </Text>
                     </View>
                   )}
-                </View>
 
-                {/* Receipt Details */}
-                <View style={styles.modalDetails}>
-                  <Text style={[styles.modalAmount, { color: theme.text }]}>
-                    {formatCurrency(convertCurrency(selectedReceipt.amount))}
-                  </Text>
-
-                  <View style={styles.modalInfoRow}>
-                    <View style={styles.modalInfoItem}>
-                      <Text
-                        style={[
-                          styles.modalInfoLabel,
-                          { color: theme.subtleText },
-                        ]}
-                      >
-                        Category
-                      </Text>
-                      <Text
-                        style={[styles.modalInfoValue, { color: theme.text }]}
-                      >
-                        {selectedReceipt.category}
-                      </Text>
-                    </View>
-
-                    <View style={styles.modalInfoItem}>
-                      <Text
-                        style={[
-                          styles.modalInfoLabel,
-                          { color: theme.subtleText },
-                        ]}
-                      >
-                        Date
-                      </Text>
-                      <Text
-                        style={[styles.modalInfoValue, { color: theme.text }]}
-                      >
-                        {new Date(selectedReceipt.date).toLocaleDateString()}
-                      </Text>
-                    </View>
+                  <View style={styles.modalInfo}>
+                    <Text style={[styles.modalAmount, { color: theme.text }]}>
+                      {formatCurrency(convertCurrency(selectedReceipt.amount))}
+                    </Text>
+                    <Text
+                      style={[styles.modalCategory, { color: theme.textMuted }]}
+                    >
+                      {selectedReceipt.category}
+                    </Text>
+                    <Text style={[styles.modalTag, { color: theme.textMuted }]}>
+                      #{selectedReceipt.tag || "No tag"}
+                    </Text>
+                    {(selectedReceipt.isRecurring ||
+                      selectedReceipt.recurrence) && (
+                      <View style={styles.modalRecurringRow}>
+                        <Text
+                          style={[
+                            styles.modalRecurringText,
+                            { color: theme.accent || theme.primary },
+                          ]}
+                        >
+                          Recurring
+                        </Text>
+                        {selectedReceipt.recurrence && (
+                          <Text
+                            style={[
+                              styles.modalRecurringFreq,
+                              { color: theme.textSecondary },
+                            ]}
+                          >
+                            (
+                            {selectedReceipt.recurrence
+                              .charAt(0)
+                              .toUpperCase() +
+                              selectedReceipt.recurrence.slice(1)}
+                            )
+                          </Text>
+                        )}
+                      </View>
+                    )}
                   </View>
 
-                  {selectedReceipt.tag && (
-                    <View style={styles.modalTagContainer}>
-                      <Text
-                        style={[
-                          styles.modalInfoLabel,
-                          { color: theme.subtleText },
-                        ]}
-                      >
-                        Tag
-                      </Text>
-                      <Text style={[styles.modalTag, { color: theme.primary }]}>
-                        #{selectedReceipt.tag}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedReceipt.notes && (
-                    <View style={styles.modalNotesContainer}>
-                      <Text
-                        style={[
-                          styles.modalInfoLabel,
-                          { color: theme.subtleText },
-                        ]}
-                      >
-                        Notes
-                      </Text>
-                      <Text style={[styles.modalNotes, { color: theme.text }]}>
-                        {selectedReceipt.notes}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Action Buttons */}
-                <View style={styles.modalButtonRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.modalButton,
-                      styles.editButton,
-                      { backgroundColor: theme.primary },
-                    ]}
-                    onPress={() => {
-                      setModalVisible(false);
-                      setTimeout(() => {
+                  <View style={styles.modalButtonRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.editButton,
+                        { backgroundColor: theme.primary },
+                      ]}
+                      onPress={() => {
+                        setModalVisible(false);
                         navigation.navigate("Add Receipt", {
                           receiptToEdit: selectedReceipt,
                         });
-                      }, 300);
-                    }}
-                  >
-                    <Text style={styles.modalButtonText}>✏️ Edit</Text>
-                  </TouchableOpacity>
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.buttonText,
+                          { color: theme.textInverse },
+                        ]}
+                      >
+                        Edit
+                      </Text>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[
-                      styles.modalButton,
-                      styles.deleteButton,
-                      { backgroundColor: theme.danger },
-                    ]}
-                    onPress={() => {
-                      Alert.alert(
-                        "Delete Receipt",
-                        "Are you sure you want to delete this receipt? This action cannot be undone.",
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Delete",
-                            style: "destructive",
-                            onPress: () =>
-                              handleDeleteReceipt(selectedReceipt.id),
-                          },
-                        ]
-                      );
-                    }}
-                  >
-                    <Text style={styles.modalButtonText}>🗑️ Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+                    <TouchableOpacity
+                      style={[
+                        styles.deleteButton,
+                        { backgroundColor: theme.danger },
+                      ]}
+                      onPress={() => {
+                        Alert.alert(
+                          "Delete Receipt",
+                          "Are you sure you want to delete this receipt?",
+                          [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Delete",
+                              style: "destructive",
+                              onPress: () =>
+                                handleDeleteReceipt(selectedReceipt.id),
+                            },
+                          ]
+                        );
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.buttonText,
+                          { color: theme.textInverse },
+                        ]}
+                      >
+                        Delete
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  mainContainer: {
     flex: 1,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: spacing.screen,
-    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  scrollContentWithDropdown: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 20,
   },
   fixedHeader: {
-    paddingHorizontal: spacing.screen,
-    paddingTop: 10,
+    backgroundColor: "transparent",
+    paddingHorizontal: spacing.lg,
   },
   header: {
-    marginBottom: 20,
-  },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    paddingVertical: spacing.lg,
+    marginBottom: spacing.md,
   },
-  appName: {
-    fontSize: 28,
-    fontWeight: "800",
+  headerContent: {
+    alignItems: "center",
   },
-  headerSubtitle: {
-    fontSize: 16,
-    fontWeight: "400",
+
+  title: {
+    fontSize: typography.display,
+    fontWeight: typography.bold,
+    marginBottom: spacing.xs,
+    textAlign: "center",
   },
-  viewModeContainer: {
-    paddingHorizontal: spacing.screen,
-    marginBottom: 16,
+  headerTitle: {
+    fontSize: typography.xxxl,
+    fontWeight: typography.bold,
+    marginBottom: spacing.xs, // Match other screens
+    textAlign: "center",
   },
-  viewModeWrapper: {
-    flexDirection: "row",
-    borderRadius: radius.medium,
-    padding: 4,
-    alignSelf: "flex-start",
-  },
-  viewModeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: radius.small,
-  },
-  viewModeText: {
-    fontSize: 16,
-    fontWeight: "600",
+  subtitle: {
+    fontSize: typography.base,
+    fontWeight: typography.normal,
+    textAlign: "center",
+    lineHeight: typography.relaxed * typography.base,
+    // No extra margin on top for compact look
   },
   filtersContainer: {
-    marginBottom: 20,
+    paddingBottom: spacing.md,
   },
-  searchContainer: {
-    marginBottom: 16,
-  },
-  searchWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: radius.medium,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 12,
-  },
-  searchInput: {
+  emptyStateContainer: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  clearButton: {
-    padding: 4,
-  },
-  clearButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  filterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  pickerWrapper: {
-    flex: 1,
-    borderRadius: radius.medium,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  picker: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  clearFilterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: radius.medium,
-  },
-  clearFilterText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  flatListContent: {
-    paddingHorizontal: spacing.screen,
-    paddingTop: 10,
-  },
-  listFlatListContent: {
-    paddingHorizontal: spacing.screen,
-    paddingTop: 10,
-  },
-  gridRow: {
-    justifyContent: "space-between",
-  },
-  cardContainer: {
-    width: "48%",
-    marginBottom: 16,
-  },
-  receiptCard: {
-    borderRadius: radius.large,
-    padding: 16,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  imageContainer: {
-    marginBottom: 12,
-  },
-  receiptImage: {
-    width: "100%",
-    height: 120,
-    borderRadius: radius.medium,
-  },
-  noImageContainer: {
-    width: "100%",
-    height: 120,
-    borderRadius: radius.medium,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    paddingVertical: spacing.xxl,
   },
-  noImageIcon: {
-    fontSize: 32,
-  },
-  receiptInfo: {
+  emptyStateIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: borderRadius.avatar,
     alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.lg,
   },
-  receiptAmount: {
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 4,
+  emptyStateIcon: {
+    fontSize: 28,
   },
-  receiptCategory: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
+  emptyStateTitle: {
+    fontSize: typography.lg,
+    fontWeight: typography.bold,
+    marginBottom: spacing.sm,
+    textAlign: "center",
   },
-  receiptTag: {
-    fontSize: 12,
-    fontWeight: "600",
-    fontStyle: "italic",
-    marginBottom: 4,
+  emptyStateSubtitle: {
+    fontSize: typography.sm,
+    fontWeight: typography.normal,
+    textAlign: "center",
+    maxWidth: 280,
+    lineHeight: typography.relaxed * typography.sm,
   },
-  receiptDate: {
-    fontSize: 12,
-    fontWeight: "500",
+  searchContainer: {
+    marginBottom: spacing.md,
   },
-  // List Card Styles
-  listCardContainer: {
-    marginBottom: 12,
-  },
-  listCard: {
-    flexDirection: "row",
-    borderRadius: radius.large,
-    padding: 16,
-    alignItems: "center",
+  searchInput: {
+    borderWidth: 1,
+    borderRadius: borderRadius.input,
+    paddingHorizontal: spacing.inputPadding,
+    paddingVertical: spacing.md,
+    fontSize: typography.base,
+    fontWeight: typography.semibold,
+    minHeight: 55,
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
       },
       android: {
         elevation: 3,
       },
     }),
   },
-  listImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.medium,
+  pickerContainer: {
+    borderWidth: 1,
+    borderRadius: borderRadius.input,
     overflow: "hidden",
-    marginRight: 16,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
-  listReceiptImage: {
-    width: "100%",
-    height: "100%",
+  picker: {
+    height: 55,
   },
-  listNoImageContainer: {
-    width: "100%",
-    height: "100%",
+  receiptsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingTop: spacing.md,
+  },
+  gridItemWrapper: {
+    width: "30%",
+    marginBottom: spacing.md,
+  },
+  flatListContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  gridRow: {
     justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
-  listNoImageIcon: {
-    fontSize: 24,
+  receiptCard: {
+    width: "100%",
+    borderRadius: borderRadius.card,
+    padding: spacing.md,
+    borderWidth: 1,
+    position: "relative", // Ensure absolutely positioned children are relative to the card
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
-  listCardDetails: {
-    flex: 1,
-  },
-  listCardHeader: {
-    marginBottom: 4,
-  },
-  listCardAmount: {
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 2,
-  },
-  listCardCategory: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  listCardTag: {
-    fontSize: 12,
-    fontWeight: "600",
-    fontStyle: "italic",
-    marginBottom: 4,
-  },
-  listCardDate: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  emptyStateContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 60,
-  },
-  emptyStateIconContainer: {
-    width: 80,
+  receiptImage: {
+    width: "100%",
     height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F5F5F5",
+    borderRadius: borderRadius.card,
+    marginBottom: spacing.sm,
+  },
+  noImageContainer: {
+    width: "100%",
+    height: 80,
+    borderRadius: borderRadius.card,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
   },
-  emptyStateIcon: {
-    fontSize: 40,
+  noImageIcon: {
+    fontSize: 20,
+    marginBottom: spacing.xs,
   },
-  emptyStateTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    marginBottom: 12,
+  noImageText: {
+    fontSize: typography.xs,
+    fontWeight: typography.semibold,
+  },
+  receiptInfo: {
+    alignItems: "center",
+  },
+  receiptAmount: {
+    fontSize: typography.base,
+    fontWeight: typography.bold,
+    marginBottom: spacing.xs,
+  },
+  receiptCategory: {
+    fontSize: typography.sm,
+    fontWeight: typography.semibold,
+    marginBottom: spacing.xs,
+  },
+  receiptTag: {
+    fontSize: typography.xs,
+    fontWeight: typography.semibold,
+    fontStyle: "italic",
+  },
+  recurringBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: "center",
+  },
+  recurringBadgeText: {
+    fontSize: typography.xs,
+    fontWeight: typography.bold,
     textAlign: "center",
-  },
-  emptyStateSubtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    maxWidth: 300,
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  addFirstButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: radius.large,
-  },
-  addFirstButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
   },
   noResultsContainer: {
     alignItems: "center",
-    paddingVertical: 60,
-  },
-  noResultsIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+    paddingVertical: spacing.xl,
   },
   noResultsText: {
-    fontSize: 16,
-    fontWeight: "500",
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  resetFiltersButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: radius.medium,
-  },
-  resetFiltersText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: typography.base,
+    fontWeight: typography.semibold,
   },
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    paddingHorizontal: spacing.md,
   },
   modalCard: {
-    width: "90%",
-    maxWidth: 400,
-    borderRadius: radius.large,
-    padding: 24,
+    width: "100%",
+    maxWidth: 380,
+    borderRadius: borderRadius.card,
+    padding: spacing.xl,
+    alignItems: "center",
+    borderWidth: 1,
     ...Platform.select({
       ios: {
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.25,
-        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.3,
+        shadowRadius: 24,
       },
       android: {
-        elevation: 12,
+        elevation: 16,
       },
     }),
   },
   closeButton: {
     position: "absolute",
-    top: 16,
-    right: 20,
+    top: spacing.lg,
+    right: spacing.lg,
     zIndex: 1,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    justifyContent: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   closeText: {
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  modalImageContainer: {
-    marginBottom: 20,
+    fontSize: 22,
+    fontWeight: typography.bold,
   },
   modalImage: {
     width: "100%",
-    height: 200,
-    borderRadius: radius.medium,
+    height: 180,
+    borderRadius: borderRadius.card,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
   },
   modalNoImage: {
     width: "100%",
-    height: 200,
-    borderRadius: radius.medium,
+    height: 180,
+    borderRadius: borderRadius.card,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: spacing.lg,
+    borderWidth: 1,
   },
   modalNoImageIcon: {
-    fontSize: 48,
-    marginBottom: 8,
+    fontSize: 36,
+    marginBottom: spacing.sm,
   },
   modalNoImageText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: typography.sm,
+    fontWeight: typography.semibold,
   },
-  modalDetails: {
-    marginBottom: 24,
+  modalInfo: {
+    alignItems: "center",
+    marginBottom: spacing.xl,
+    width: "100%",
+    paddingHorizontal: spacing.md,
   },
   modalAmount: {
-    fontSize: 28,
-    fontWeight: "900",
+    fontSize: typography.display,
+    fontWeight: typography.bold,
+    marginBottom: spacing.md,
     textAlign: "center",
-    marginBottom: 20,
   },
-  modalInfoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  modalInfoItem: {
-    flex: 1,
-  },
-  modalInfoLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  modalInfoValue: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  modalTagContainer: {
-    marginBottom: 16,
+  modalCategory: {
+    fontSize: typography.lg,
+    fontWeight: typography.semibold,
+    marginBottom: spacing.sm,
   },
   modalTag: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: typography.base,
+    fontWeight: typography.semibold,
     fontStyle: "italic",
-  },
-  modalNotesContainer: {
-    marginBottom: 16,
-  },
-  modalNotes: {
-    fontSize: 14,
-    fontWeight: "500",
-    lineHeight: 20,
   },
   modalButtonRow: {
     flexDirection: "row",
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: radius.medium,
-    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: spacing.md,
+    paddingHorizontal: spacing.xs,
   },
   editButton: {
-    // backgroundColor set dynamically
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.button,
+    flex: 1,
+    alignItems: "center",
+    minHeight: 44,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   deleteButton: {
-    // backgroundColor set dynamically
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.button,
+    flex: 1,
+    alignItems: "center",
+    minHeight: 44,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
-  modalButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+  buttonText: {
+    fontSize: typography.base,
+    fontWeight: typography.bold,
   },
   bottomSpacing: {
-    height: 40,
+    height: spacing.xl,
+  },
+  modalRecurringRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 4,
+    gap: 6,
+  },
+  modalRecurringText: {
+    fontSize: typography.sm,
+    fontWeight: typography.bold,
+  },
+  modalRecurringFreq: {
+    fontSize: typography.sm,
+    fontWeight: typography.regular,
+  },
+  filterRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: spacing.md,
+    gap: 8,
+  },
+  filterButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginHorizontal: 2,
+  },
+  filterButtonText: {
+    fontSize: typography.sm,
+    fontWeight: typography.semibold,
+  },
+  recurringCheck: {
+    position: "absolute",
+    top: -102,
+    left: -12,
+    zIndex: 2,
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recurringCheckMark: {
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
 

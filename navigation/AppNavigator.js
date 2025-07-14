@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import auth from "@react-native-firebase/auth";
-import { TouchableOpacity, Text } from "react-native";
+import { TouchableOpacity, Text, View, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import HomeScreen from "../screens/HomeScreen";
 import AddReceiptScreen from "../screens/AddReceiptScreen";
@@ -17,6 +19,182 @@ import SavingsGoalScreen from "../screens/SavingsGoalScreen";
 import TrendsScreen from "../screens/TrendsScreen";
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// Zenny Brand Color Theme
+const ZENNY_THEME = {
+  primary: "#6366F1",
+  secondary: "#8B5CF6",
+  accent: "#06B6D4",
+  success: "#10B981",
+  warning: "#F59E0B",
+  danger: "#EF4444",
+  background: "#FAFAFA",
+  surface: "#FFFFFF",
+  text: "#111827",
+  textSecondary: "#6B7280",
+  textMuted: "#9CA3AF",
+  textInverse: "#FFFFFF",
+  border: "#E5E7EB",
+  shadow: "rgba(99, 102, 241, 0.08)",
+};
+
+// Main Tab Navigator
+const MainTabNavigator = () => {
+  const homeRef = useRef();
+  const receiptsRef = useRef();
+  const analyticsRef = useRef();
+  const budgetRef = useRef();
+  const settingsRef = useRef();
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === "Dashboard") {
+            iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "Add") {
+            iconName = focused ? "add-circle" : "add-circle-outline";
+          } else if (route.name === "Receipts") {
+            iconName = focused ? "receipt" : "receipt-outline";
+          } else if (route.name === "Analytics") {
+            iconName = focused ? "analytics" : "analytics-outline";
+          } else if (route.name === "Budget") {
+            iconName = focused ? "wallet" : "wallet-outline";
+          } else if (route.name === "Settings") {
+            iconName = focused ? "settings" : "settings-outline";
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: ZENNY_THEME.primary,
+        tabBarInactiveTintColor: ZENNY_THEME.textMuted,
+        tabBarStyle: {
+          backgroundColor: ZENNY_THEME.surface,
+          borderTopColor: ZENNY_THEME.border,
+          borderTopWidth: 1,
+          paddingBottom: 15,
+          paddingTop: 10,
+          height: 85,
+          shadowColor: ZENNY_THEME.shadow,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          elevation: 12,
+          position: "absolute",
+          bottom: 20,
+          left: 0,
+          right: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 13,
+          fontWeight: "700",
+          marginTop: 4,
+        },
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen
+        name="Dashboard"
+        options={{ tabBarLabel: "Home" }}
+        listeners={{
+          tabPress: () => {
+            if (homeRef.current && homeRef.current.scrollToTop) {
+              homeRef.current.scrollToTop();
+            }
+          },
+        }}
+      >
+        {(props) => (
+          <HomeScreen {...props} ref={homeRef} navigation={props.navigation} />
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Add"
+        component={AddReceiptScreen}
+        options={{ tabBarLabel: "Add" }}
+      />
+      <Tab.Screen
+        name="Receipts"
+        options={{ tabBarLabel: "Receipts" }}
+        listeners={{
+          tabPress: () => {
+            if (receiptsRef.current && receiptsRef.current.scrollToTop) {
+              receiptsRef.current.scrollToTop();
+            }
+          },
+        }}
+      >
+        {(props) => (
+          <SavedReceiptsScreen
+            {...props}
+            ref={receiptsRef}
+            navigation={props.navigation}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Analytics"
+        options={{ tabBarLabel: "Analytics" }}
+        listeners={{
+          tabPress: () => {
+            if (analyticsRef.current && analyticsRef.current.scrollToTop) {
+              analyticsRef.current.scrollToTop();
+            }
+          },
+        }}
+      >
+        {(props) => (
+          <StatsScreen
+            {...props}
+            ref={analyticsRef}
+            navigation={props.navigation}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Budget"
+        options={{ tabBarLabel: "Budget" }}
+        listeners={{
+          tabPress: () => {
+            if (budgetRef.current && budgetRef.current.scrollToTop) {
+              budgetRef.current.scrollToTop();
+            }
+          },
+        }}
+      >
+        {(props) => (
+          <MyBudgetScreen
+            {...props}
+            ref={budgetRef}
+            navigation={props.navigation}
+          />
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Settings"
+        options={{ tabBarLabel: "Settings" }}
+        listeners={{
+          tabPress: () => {
+            if (settingsRef.current && settingsRef.current.scrollToTop) {
+              settingsRef.current.scrollToTop();
+            }
+          },
+        }}
+      >
+        {(props) => (
+          <SettingsScreen
+            {...props}
+            ref={settingsRef}
+            navigation={props.navigation}
+          />
+        )}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
+};
 
 const AppNavigator = () => {
   const [user, setUser] = useState(null);
@@ -52,17 +230,12 @@ const AppNavigator = () => {
       {user ? (
         <>
           <Stack.Screen
-            name="Home"
-            component={HomeScreen}
+            name="MainTabs"
+            component={MainTabNavigator}
             options={{
               headerShown: false,
             }}
           />
-          <Stack.Screen name="Saved Receipts" component={SavedReceiptsScreen} />
-          <Stack.Screen name="Add Receipt" component={AddReceiptScreen} />
-          <Stack.Screen name="My Budget" component={MyBudgetScreen} />
-          <Stack.Screen name="Statistics" component={StatsScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="Manage Budgets" component={ManageBudgetScreen} />
           <Stack.Screen
             name="Manage Categories"

@@ -25,7 +25,6 @@ const receiptsToCSV = (receipts, currency) => {
     "Category",
     "Amount",
     "Description",
-    "Store",
     "Payment Method",
     "Notes",
   ].join(",");
@@ -36,7 +35,6 @@ const receiptsToCSV = (receipts, currency) => {
       receipt.category || "",
       formatCurrency(receipt.amount, currency),
       `"${(receipt.description || "").replace(/"/g, '""')}"`,
-      `"${(receipt.store || "").replace(/"/g, '""')}"`,
       receipt.paymentMethod || "",
       `"${(receipt.notes || "").replace(/"/g, '""')}"`,
     ].join(",")
@@ -426,7 +424,6 @@ export const exportDataAsPDF = async (userData, currency = "USD") => {
                   <th>Category</th>
                   <th>Amount</th>
                   <th>Description</th>
-                  <th>Store</th>
                 </tr>
               </thead>
               <tbody>
@@ -438,7 +435,6 @@ export const exportDataAsPDF = async (userData, currency = "USD") => {
                     <td>${receipt.category || ""}</td>
                     <td>${formatCurrency(receipt.amount, currency)}</td>
                     <td>${receipt.description || ""}</td>
-                    <td>${receipt.store || ""}</td>
                   </tr>
                 `
                   )

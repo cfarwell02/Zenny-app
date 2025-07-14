@@ -3,3 +3,10 @@ export const radius = {
   medium: 12,
   large: 16,
 };
+
+export const borderRadius = {
+  card: 20,
+  button: 16,
+  input: 12,
+  avatar: 36,
+};
